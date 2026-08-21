@@ -1819,6 +1819,7 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
             <div class="set-nav-item" onclick="setTab('users',this)">👥 ຜູ້ໃຊ້</div>
             <div class="set-nav-item" onclick="setTab('roles',this)">🛡️ ບົດບາດ</div>
             <div class="set-nav-item" onclick="setTab('backup',this)" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px">💾 ສຳຮອງຂໍ້ມູນ</div>
+            <div id="nav-auditlog-tab" class="set-nav-item" onclick="setTab('auditlog',this)">📋 Audit Log</div>
             <div id="nav-reset-tab" class="set-nav-item" onclick="setTab('reset-tab',this)" style="color:#DC2626">🗑️ ລຶບຂໍ້ມູນ</div>
           </div>
           <div>
@@ -1983,6 +1984,13 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
                 <button class="btn" style="border:1.5px solid var(--bdr)" onclick="fetchBranchCopyPreview()">🔍 ດຶງມາເບິ່ງກ່ອນ</button>
               </div>
               <div id="copy-branch-preview"></div>
+            </div>
+            <div id="st-auditlog" class="hidden">
+              <div class="set-sec-title">📋 Audit Log — ບັນທຶກສ່ວນຫຼຸດ/ໃຫ້ຟຣີ/Void</div>
+              <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.7">
+                ບັນທຶກທຸກຄັ້ງທີ່ມີການໃຊ້ສ່ວນຫຼຸດ, ໃຫ້ຟຣີ ຫຼື Void ບິນ — ລວມທັງໃຜເປັນຄົນເຮັດ, ເຫດຜົນ, ແລະ ຜູ້ອະນຸມັດ (ຖ້າຕ້ອງມີ). ໃຊ້ຄົ້ນຫາຮູບແບບຜິດປົກກະຕິໄດ້
+              </div>
+              <div id="auditlog-list"></div>
             </div>
             <div id="st-reset-tab" class="hidden">
               <div class="set-sec-title" style="color:#DC2626">🗑️ ລຶບຂໍ້ມູນ</div>
@@ -2952,9 +2960,34 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
       <label class="form-label" id="disc-lbl">ສ່ວນຫຼຸດ (%)</label>
       <input class="form-input" type="number" id="disc-val" placeholder="0" style="font-size:20px;font-weight:800">
     </div>
+    <div class="form-group">
+      <label class="form-label">ເຫດຜົນ (ບັງຄັບ) *</label>
+      <input class="form-input" id="disc-reason" placeholder="ເຊັ່ນ: ລູກຄ້າປະຈຳ, ໂປຣໂມຊັ່ນ...">
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px">ສ່ວນຫຼຸດເກີນ 5% ຈະຕ້ອງໃຫ້ Admin/Manager ອະນຸມັດດ້ວຍລະຫັດຜ່ານ (ຍົກເວັ້ນຖ້າທ່ານເອງເປັນ Admin/Manager)</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-disc')">ຍົກເລີກ</button>
       <button class="btn btn-primary" onclick="applyDiscount()">✅ ໃຊ້ສ່ວນຫຼຸດ</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN APPROVAL MODAL (Admin/Manager) -->
+<div class="modal-bd hidden" id="modal-pin-approval">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-title" id="pin-approval-title">🔒 ຕ້ອງການອະນຸມັດ Admin/Manager</div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;background:var(--panel-bg2);border-radius:10px;padding:10px 12px" id="pin-approval-detail"></div>
+    <div class="form-group">
+      <label class="form-label">Username Admin/Manager</label>
+      <input class="form-input" id="pin-user" placeholder="admin">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ລະຫັດຜ່ານ</label>
+      <input class="form-input" type="password" id="pin-pass" placeholder="••••">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cancelPinApproval()">ຍົກເລີກ</button>
+      <button class="btn btn-primary" onclick="confirmPinApproval()">✅ ອະນຸມັດ</button>
     </div>
   </div>
 </div>
@@ -3098,6 +3131,10 @@ let ROLES_DATA = [
 ];
 
 let BILLS = []
+let AUDIT_LOG = []
+// ✅ ໂຕລະບຸ browser/session ນີ້ ໃຊ້ແກ້ bug ຈຳນວນອໍເດີ້ QR ຄູນ 2
+// (ຕົນເອງບໍ່ຄວນປະມວນຜົນ order ຂອງຕົນເອງຄືນຈາກ Firebase ອີກຄັ້ງ ຫຼັງຈາກໄດ້ເພີ່ມ local ໄປແລ້ວ)
+const SESSION_ID = 'sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
 let S = {
   role:'admin', user:null, view:'dashboard',
   posTable:null, posItems:{}, discount:0, discType:'percent',
@@ -3800,6 +3837,8 @@ function _completeLogin(matched, u){
   // Show/hide reset tab based on role
   const _rt = document.getElementById('nav-reset-tab');
   if(_rt) _rt.style.display = (S.role==='admin') ? 'flex' : 'none';
+  const _at = document.getElementById('nav-auditlog-tab');
+  if(_at) _at.style.display = (S.role==='admin'||S.role==='manager') ? 'flex' : 'none';
   goTo(rc.navs[0]);
   toast(`ຍິນດີຕ້ອນຮັບ ${rc.icon} ${matched.name}!`);
   _startSessionTimer();
@@ -4225,19 +4264,65 @@ function clearPOS(){S.posItems={};S.discount=0;S.loyDisc=0;renderOrderPanel();}
 
 /* DISCOUNT */
 let discType='percent';
-function addDiscount(){discType='percent';document.getElementById('disc-val').value='';openModal('modal-disc');}
+function addDiscount(){discType='percent';document.getElementById('disc-val').value='';const rEl=document.getElementById('disc-reason');if(rEl)rEl.value='';openModal('modal-disc');}
 function setDiscType(t,el){
   discType=t;
   document.querySelectorAll('#modal-disc .btn').forEach(b=>b.classList.remove('btn-primary'));
   el.classList.add('btn-primary');
   document.getElementById('disc-lbl').textContent=t==='percent'?'ສ່ວນຫຼຸດ (%)':'ສ່ວນຫຼຸດ (₭)';
 }
+/* ── ຄວບຄຸມການໃຊ້ສ່ວນຫຼຸດ: ບັງຄັບເຫດຜົນ + ຖ້າເກີນ 5% ຫຼືບໍ່ແມ່ນ Admin/Manager ຕ້ອງມີ PIN ອະນຸມັດ ── */
 function applyDiscount(){
   const v=parseFloat(document.getElementById('disc-val').value)||0;
+  const reason=(document.getElementById('disc-reason')?.value||'').trim();
   if(v<=0){toast('ໃສ່ຈຳນວນ','error');return;}
-  S.discount=v;S.discType=discType;
+  if(!reason){toast('ກະລຸນາໃສ່ເຫດຜົນສ່ວນຫຼຸດ','error');return;}
+  const sub=Object.values(S.posItems||{}).reduce((a,i)=>a+i.price*i.qty,0);
+  const pctOfSub = discType==='percent' ? v : (sub>0 ? (v/sub*100) : 0);
+  const isMgmt = S.role==='admin' || S.role==='manager';
+  if(isMgmt || pctOfSub<=5){
+    _commitDiscount(v, discType, reason, isMgmt?'':'ອະນຸມັດຕົນເອງ (≤5%)');
+    return;
+  }
+  // ເກີນ 5% ແລະ ບໍ່ແມ່ນ Admin/Manager — ຕ້ອງມີລະຫັດ Admin/Manager ອະນຸມັດ
+  _pendingDiscount = {v, discType, reason};
+  closeModal('modal-disc');
+  document.getElementById('pin-approval-title').textContent='🔒 ຢືນຢັນສ່ວນຫຼຸດເກີນ 5%';
+  document.getElementById('pin-approval-detail').textContent = `ສ່ວນຫຼຸດ: ${discType==='percent'?v+'%':fmt(v)+' ₭'} — ເຫດຜົນ: ${reason}`;
+  document.getElementById('pin-user').value='';
+  document.getElementById('pin-pass').value='';
+  _pinApprovalAction='discount';
+  openModal('modal-pin-approval');
+}
+function _commitDiscount(v, dtype, reason, approver){
+  S.discount=v;S.discType=dtype;
   closeModal('modal-disc');renderOrderPanel();
-  toast(`ສ່ວນຫຼຸດ ${discType==='percent'?v+'%':fmt(v)} ໃຊ້ແລ້ວ`);
+  toast(`ສ່ວນຫຼຸດ ${dtype==='percent'?v+'%':fmt(v)} ໃຊ້ແລ້ວ`);
+  logAudit('discount', `${dtype==='percent'?v+'%':fmt(v)+' ₭'} ໃນອໍເດີ້ (ໂຕະ ${S.posTable||'-'})`, reason, approver||'');
+}
+
+/* ── ໂມດັນອະນຸມັດ Admin/Manager (ໃຊ້ຮ່ວມກັນລະຫວ່າງສ່ວນຫຼຸດ/ໃຫ້ຟຣີ) ── */
+let _pinApprovalAction = null; // 'discount' | 'free'
+let _pendingDiscount = null;
+let _pendingFree = null;
+function cancelPinApproval(){
+  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null;
+  closeModal('modal-pin-approval');
+}
+function confirmPinApproval(){
+  const u=(document.getElementById('pin-user').value||'').trim();
+  const p=(document.getElementById('pin-pass').value||'').trim();
+  const approver = (USERS_DATA||[]).find(x=>(x.email===u||x.name===u) && (x.role==='admin'||x.role==='manager') && (x.pass===p||(!x.pass&&p==='1234')));
+  if(!approver){ toast('ຊື່/ລະຫັດຜ່ານບໍ່ຖືກ ຫຼື ບໍ່ແມ່ນ Admin/Manager','error'); return; }
+  closeModal('modal-pin-approval');
+  if(_pinApprovalAction==='discount' && _pendingDiscount){
+    const {v,discType:dt,reason} = _pendingDiscount;
+    _commitDiscount(v, dt, reason, approver.name);
+  } else if(_pinApprovalAction==='free' && _pendingFree){
+    const {key, qty, reason} = _pendingFree;
+    _commitFree(key, qty, reason, approver.name);
+  }
+  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null;
 }
 
 /* CHECKOUT */
@@ -4650,7 +4735,7 @@ function renderBills(filter='all',search=''){
         <div style="display:flex;gap:5px">
           <button class="btn btn-ghost btn-sm" onclick="reprintBill('${x.id}')">🖨️</button>
           <button class="btn btn-ghost btn-sm" onclick="viewBillDetail('${x.id}')">👁️</button>
-          ${x.voided?'<span style="font-size:11px;color:var(--c-red);font-weight:700">VOID</span>':(S.user&&S.user.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="openVoidBill('${x.id}')">✕ Void</button>`:'') }
+          ${x.voided?`<span style="font-size:11px;color:var(--c-red);font-weight:700">VOID</span>${S.user&&S.user.role==='admin'?`<button class="btn btn-ghost btn-sm" style="color:var(--c-red)" onclick="deleteVoidedBill('${x.id}')" title="ລຶບຖາວອນ — ສະເພາະບິນທີ່ Void ແລ້ວ">🗑️</button>`:''}`:(S.user&&S.user.role==='admin'?`<button class="btn btn-danger btn-sm" onclick="openVoidBill('${x.id}')">✕ Void</button>`:'') }
         </div>
       </td>
     </tr>`).join('');
@@ -4718,7 +4803,23 @@ function confirmVoidBill(){
   _voidBillId = null;
   renderBills();
   renderDash();
+  logAudit('void', `${b.id} (${b.table||'-'} · ${fmt(b.total)})`, reason + (note?(' — '+note):''), '');
   toast(`✅ Void ${b.id} ສຳເລັດ — ${reason}`, 'success');
+}
+
+/* ── ລຶບບິນຖາວອນ — ອະນຸຍາດສະເພາະບິນທີ່ Void ແລ້ວເທົ່ານັ້ນ (ບິນທີ່ຍັງໃຊ້ງານຢູ່ຫ້າມລຶບ) ── */
+function deleteVoidedBill(id){
+  if(S.user?.role !== 'admin'){ toast('ລຶບໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
+  const b = BILLS.find(x=>x.id===id);
+  if(!b){ toast('ຫາບິນບໍ່ພົບ','error'); return; }
+  if(!b.voided){ toast('ລຶບໄດ້ສະເພາະບິນທີ່ Void ແລ້ວເທົ່ານັ້ນ','error'); return; }
+  if(!confirm(`ລຶບບິນ ${b.id} ອອກຖາວອນ?\n\nການລຶບນີ້ຈະລຶບອອກຈາກ Firebase ຈິງ — ບໍ່ສາມາດກູ້ຄືນໄດ້`)) return;
+  const idx = BILLS.indexOf(b);
+  if(idx>-1) BILLS.splice(idx,1);
+  if(fbDB) fbDB.ref(BRANCH_PATH+'bills/'+b.id).remove().catch(e=>{});
+  renderBills();
+  renderDash();
+  toast(`✅ ລຶບ ${b.id} ຖາວອນແລ້ວ`,'success');
 }
 
 /* ================================================================
@@ -5248,16 +5349,23 @@ function showTblDetail(id){
 
   // Restore tomCart from staffCart (staff's unsent selections) merged with custPending
   tomCart = {};
-  // Load customer's pending items first
+  // Load customer's pending items first — mark fromCustomer so the "📱 ລູກຄ້າ" badge
+  // survives even after custPending is cleared below (fixes qty doubling bug)
   (t.custPending || []).forEach(p => {
     if(tomCart[p.key]) tomCart[p.key].qty += p.qty;
-    else tomCart[p.key] = {...p};
+    else tomCart[p.key] = {...p, fromCustomer:true};
   });
   // Merge staff's saved cart items on top
   Object.values(t.staffCart || {}).forEach(p => {
-    if(tomCart[p.key]) tomCart[p.key].qty += p.qty;
+    if(tomCart[p.key]){ tomCart[p.key].qty += p.qty; if(p.fromCustomer) tomCart[p.key].fromCustomer = true; }
     else tomCart[p.key] = {...p};
   });
+  // ✅ ແກ້ bug ຈຳນວນຊ້ຳ (ຄູນ 2): custPending ຖືກດຶງເຂົ້າ tomCart ຄັ້ງນີ້ແລ້ວ — ຕ້ອງລ້າງອອກທັນທີ
+  // ບໍ່ໃຫ້ນຳມາລວມຄືນຊ້ຳໃນຄັ້ງໜ້າ (ຄ່າຈະຖືກເກັບຄົງທົນຢູ່ໃນ staffCart ແທນ, badge "📱 ລູກຄ້າ" ຍັງເຫັນຄືເກົ່າ)
+  if((t.custPending||[]).length){
+    t.custPending = [];
+    if(fbDB) fbSaveOneTable(id);
+  }
 
   document.getElementById('tom-title').textContent = `${t.name}  ·  ${t.status==='busy'?'ໃຊ້ຢູ່':'ວ່າງ'}`;
   document.getElementById('tom-seats').textContent = `${t.seats} ທີ່ນັ່ງ`;
@@ -5385,9 +5493,31 @@ function tomSetFree(key){
   const val = prompt(`ຈຳນວນທີ່ໃຫ້ຟຣີ (ຈາກທັງໝົດ ${it.qty}):`, it.free||0);
   if(val === null) return;
   const n = Math.max(0, Math.min(it.qty, parseInt(val)||0));
+  if(n<=0){ it.free = 0; tomRenderCart(); tomRenderSummary(); return; }
+  const reason = prompt(`ເຫດຜົນທີ່ໃຫ້ຟຣີ x${n} (ບັງຄັບ):`, '');
+  if(!reason || !reason.trim()){ toast('ຕ້ອງໃສ່ເຫດຜົນ — ຍົກເລີກການໃຫ້ຟຣີ','error'); return; }
+  const isMgmt = S.role==='admin' || S.role==='manager';
+  if(isMgmt){
+    _commitFree(key, n, reason.trim(), '');
+    return;
+  }
+  // ບໍ່ແມ່ນ Admin/Manager — ຕ້ອງມີລະຫັດອະນຸມັດທຸກຄັ້ງ
+  _pendingFree = {key, qty:n, reason:reason.trim()};
+  document.getElementById('pin-approval-title').textContent='🔒 ຢືນຢັນການໃຫ້ຟຣີ';
+  document.getElementById('pin-approval-detail').textContent = `ໃຫ້ຟຣີ: ${it.name} x${n} — ເຫດຜົນ: ${reason.trim()}`;
+  document.getElementById('pin-user').value='';
+  document.getElementById('pin-pass').value='';
+  _pinApprovalAction='free';
+  openModal('modal-pin-approval');
+}
+function _commitFree(key, n, reason, approver){
+  const it = tomCart[key];
+  if(!it) return;
   it.free = n;
   tomRenderCart();
   tomRenderSummary();
+  logAudit('free', `${it.name} x${n} ຟຣີ`, reason, approver||'');
+  toast(`✅ ໃຫ້ຟຣີ ${it.name} x${n} ແລ້ວ`,'success');
 }
 
 /* ── ດື່ມຢູ່ຮ້ານ (ບໍ່ຕັດຈອກ): ສະເພາະລາຍການທີ່ຕິດຕາມສາງແບບ 'ຈອກ' ('cup') ── */
@@ -5412,8 +5542,6 @@ function tomAddNote(key){
 function tomRenderCart(){
   const items = Object.values(tomCart);
   const el = document.getElementById('tom-cart-list');
-  const t = TABLES.find(x => x.id === tomTableId);
-  const custKeys = new Set((t?.custPending||[]).map(p => p.key));
 
   if(!items.length){
     el.innerHTML = `<div style="text-align:center;padding:16px;font-size:12px;color:var(--t3)">ຍັງບໍ່ໄດ້ເລືອກ</div>`;
@@ -5421,7 +5549,7 @@ function tomRenderCart(){
     return;
   }
   el.innerHTML = items.map(it => {
-    const fromCust = custKeys.has(it.key);
+    const fromCust = !!it.fromCustomer;
     const free = it.free||0;
     const lineTotal = it.price*Math.max(0,it.qty-free);
     const usesCup = tomItemUsesCup(it.key);
@@ -7474,7 +7602,7 @@ function confirmBranchCopy(){
 }
 
 function setTab(t,el){
-  ['store','system','payment','printer','notif','users','roles','backup','reset-tab'].forEach(id=>document.getElementById(`st-${id}`)?.classList.add('hidden'));
+  ['store','system','payment','printer','notif','users','roles','backup','auditlog','reset-tab'].forEach(id=>document.getElementById(`st-${id}`)?.classList.add('hidden'));
   document.querySelectorAll('.set-nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById(`st-${t}`)?.classList.remove('hidden');
   el.classList.add('active');
@@ -7482,9 +7610,12 @@ function setTab(t,el){
   if(t==='users')   renderUsersInSettings();
   if(t==='roles')   renderRolesInSettings();
   if(t==='backup')  { if(typeof renderImportBatches==='function') renderImportBatches(); }
+  if(t==='auditlog'){ if(typeof renderAuditLog==='function') renderAuditLog(); }
   // Ensure reset tab visibility
   const _rt2=document.getElementById('nav-reset-tab');
   if(_rt2) _rt2.style.display=(S.role==='admin')?'flex':'none';
+  const _at2=document.getElementById('nav-auditlog-tab');
+  if(_at2) _at2.style.display=(S.role==='admin'||S.role==='manager')?'flex':'none';
 }
 
 function renderBankQRSettings(){
@@ -11113,7 +11244,8 @@ function initFirebase(){
     fbListenCategories();   // ຟັງ categories real-time
     fbListenStore();        // ຟັງ store info real-time
     fbListenUsers();        // ຟັງ users real-time
-    fbListenRoles();        // ຟັງ roles real-time
+    fbListenRoles();
+    fbListenAuditLog();        // ຟັງ roles real-time
   } catch(err){ console.warn('Firebase init failed:', err.message); }
 }
 
@@ -11460,6 +11592,52 @@ function fbListenRoles(){
   });
 }
 
+/* ── Audit Log — ບັນທຶກການກະທຳສ່ຽງ (ສ່ວນຫຼຸດ/ໃຫ້ຟຣີ/Void) ລວມສູນ ໃຫ້ Admin ກວດຄືນໄດ້ ── */
+function logAudit(action, detail, reason, approver){
+  const entry = {
+    id: 'aud_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+    ts: Date.now(),
+    date: new Date().toISOString().slice(0,10),
+    time: (typeof timeNow==='function') ? timeNow() : new Date().toLocaleTimeString('lo-LA'),
+    user: S.user?.name || '?',
+    role: S.role || '?',
+    action, detail: detail||'', reason: reason||'', approver: approver||''
+  };
+  AUDIT_LOG.unshift(entry);
+  if(AUDIT_LOG.length>500) AUDIT_LOG.length=500;
+  if(fbDB) fbDB.ref(BRANCH_PATH+'auditLog/'+entry.id).set(entry).catch(e=>{});
+  if(typeof renderAuditLog==='function') renderAuditLog();
+}
+function fbListenAuditLog(){
+  if(!fbDB) return;
+  fbDB.ref(BRANCH_PATH+'auditLog').limitToLast(500).on('value', snap=>{
+    const d=snap.val(); if(!d) return;
+    const arr = Array.isArray(d) ? d.filter(Boolean) : Object.values(d);
+    arr.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    AUDIT_LOG.length=0; arr.forEach(x=>AUDIT_LOG.push(x));
+    if(typeof renderAuditLog==='function') renderAuditLog();
+  });
+}
+function renderAuditLog(){
+  const box = document.getElementById('auditlog-list');
+  if(!box) return;
+  if(!AUDIT_LOG.length){ box.innerHTML = `<div style="font-size:12px;color:var(--t3);padding:20px;text-align:center">ຍັງບໍ່ມີບັນທຶກ</div>`; return; }
+  const actionLabel = {discount:'🏷️ ສ່ວນຫຼຸດ', free:'🎁 ໃຫ້ຟຣີ', void:'✕ Void'};
+  const actionColor = {discount:'#EAB308', free:'#DC2626', void:'#EF4444'};
+  box.innerHTML = AUDIT_LOG.map(x=>`
+    <div style="background:var(--panel-bg2);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;margin-bottom:8px;font-size:12px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
+        <div>
+          <span style="font-weight:800;color:${actionColor[x.action]||'var(--t1)'}">${actionLabel[x.action]||x.action}</span>
+          <span style="color:var(--t2)"> — ${x.detail||''}</span>
+        </div>
+        <div style="color:var(--t3);white-space:nowrap">${x.date} ${x.time}</div>
+      </div>
+      <div style="color:var(--t2);margin-top:4px">👤 ${x.user} (${x.role}) ${x.approver?`· ✅ ອະນຸມັດໂດຍ ${x.approver}`:''}</div>
+      ${x.reason?`<div style="color:var(--t3);margin-top:2px">📝 ${x.reason}</div>`:''}
+    </div>`).join('');
+}
+
 function fbListenExpenses(){
   if(!fbDB) return;
   fbDB.ref(BRANCH_PATH+'expenses').on('value', snap=>{
@@ -11527,6 +11705,12 @@ function fbListenLoyaltyConfig(){
 }
 
 function fbHandleNewOrder(ord){
+  // ✅ ແກ້ bug ຈຳນວນຄູນ 2: browser ທີ່ສົ່ງ order ນີ້ເອງ (ລູກຄ້າ) ໄດ້ເພີ່ມ local ໄປແລ້ວ
+  // ຕອນກົດຢືນຢັນ — ຖ້າ order ນີ້ echo ກັບມາຫາຕົນເອງຈາກ Firebase ໃຫ້ຂ້າມ (ບໍ່ບວກຊ້ຳ)
+  if(ord.origin && ord.origin === SESSION_ID){
+    if(fbDB) fbDB.ref(BRANCH_PATH+'qr_orders/'+ord.orderId).update({status:'received'}).catch(e=>{});
+    return;
+  }
   const t=TABLES.find(x=>String(x.id)===String(ord.tableId));
   if(!t) return;
   const items=ord.items||[];
@@ -11553,7 +11737,7 @@ function fbSendOrder(tableId, tableName, items, remark){
   const orderId='ord_'+Date.now();
   const payload = { orderId, tableId, tableName, items,
     time:new Date().toLocaleTimeString('lo-LA'),
-    status:'pending', ts:Date.now() };
+    status:'pending', ts:Date.now(), origin:SESSION_ID };
   if(remark) payload.remark = remark;
   fbDB.ref(BRANCH_PATH+'qr_orders/'+orderId).set(payload).catch(e=>console.warn('fbSendOrder:',e));
 }
