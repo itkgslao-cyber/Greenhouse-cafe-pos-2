@@ -1902,12 +1902,9 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
               <div class="set-sec-title" style="margin-top:14px">🕒 ຕັ້ງຄ່າ ສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ</div>
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">ໄລຍະຫ່າງລະຫວ່າງຊ່ວງເວລາ (ນາທີ)</label>
-                  <input class="form-input" type="number" min="5" step="5" id="po-cfg-interval" value="15" onchange="savePreorderConfig()">
-                </div>
-                <div class="form-group">
                   <label class="form-label">ນັດລ່ວງໜ້າຂັ້ນຕ່ຳ (ນາທີ)</label>
                   <input class="form-input" type="number" min="10" step="5" id="po-cfg-lead" value="20" onchange="savePreorderConfig()">
+                  <div style="font-size:11px;color:var(--t3);margin-top:4px">ລູກຄ້າເລືອກເວລານັດຮັບເອງໄດ້ຢ່າງອິດສະຫຼະ ແຕ່ຕ້ອງລ່ວງໜ້າຢ່າງໜ້ອຍຈຳນວນນີ້ (ນັບຈາກຕອນສັ່ງ) ແລະ ຢູ່ໃນເວລາເປີດ-ປິດຮ້ານ</div>
                 </div>
               </div>
               <div style="font-size:11px;color:var(--t3);margin:-6px 0 4px">ຊ່ວງເວລານັດຮັບຈະຄິດໄລ່ຈາກເວລາ "ເປີດ-ປິດຮ້ານ" ຂ້າງເທິງ ⚠️ [ຕ້ອງຢືນຢັນ ໃຫ້ຖືກຕ້ອງກ່ອນເປີດໃຊ້ຈິງ]</div>
@@ -8400,7 +8397,9 @@ let poFilter = 'all';     // staff-side filter tab
 let _myPoRef = null;      // customer-side: listener on their own order, for live status
 
 // ─ ຄິດໄລ່ຊ່ວງເວລານັດຮັບທີ່ເລືອກໄດ້ (ອີງເວລາເປີດ-ປິດຮ້ານ + ໄລຍະຫ່າງ + lead time ຂັ້ນຕ່ຳ) ─
-function generateTimeSlots(){
+// ─ ຄິດໄລ່ຂອບເຂດເວລານັດຮັບທີ່ຮັບໄດ້ (ໄວທີ່ສຸດ = ດຽວນີ້+lead time, ຊ້າສຸດ = ເວລາປິດຮ້ານ) ─
+// ລູກຄ້າເລືອກເວລາເອງໄດ້ຢ່າງອິດສະຫຼະພາຍໃນຂອບເຂດນີ້ (ບໍ່ຈຳກັດເປັນຊ່ວງໆອີກຕໍ່ໄປ)
+function getPreorderTimeBounds(){
   const openStr  = STORE_INFO.open  || '09:00';
   const closeStr = STORE_INFO.close || '22:00';
   const [oh,om] = openStr.split(':').map(Number);
@@ -8408,19 +8407,29 @@ function generateTimeSlots(){
   const now = new Date();
   const openDt = new Date(now); openDt.setHours(oh||0, om||0, 0, 0);
   let closeDt  = new Date(now); closeDt.setHours(ch||0, cm||0, 0, 0);
-  if(closeDt.getTime() <= openDt.getTime()) closeDt = new Date(closeDt.getTime() + 24*3600000); // ຮ້ານປິດຫຼັງທ່ຽງຄືນ
-  const interval = Math.max(5, PREORDER_CONFIG.slotIntervalMin||15) * 60000;
-  const leadMs   = Math.max(0, PREORDER_CONFIG.minLeadMin||20) * 60000;
-  const earliest = now.getTime() + leadMs;
-  let start = Math.max(earliest, openDt.getTime());
-  const fromOpen = Math.max(0, start - openDt.getTime());
-  start = openDt.getTime() + Math.ceil(fromOpen / interval) * interval;
-  const slots = [];
-  for(let t=start; t<=closeDt.getTime(); t+=interval){
-    const d = new Date(t);
-    slots.push(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);
-  }
-  return slots;
+  const wrapsPastMidnight = closeDt.getTime() <= openDt.getTime();
+  if(wrapsPastMidnight) closeDt = new Date(closeDt.getTime() + 24*3600000); // ຮ້ານປິດຫຼັງທ່ຽງຄືນ
+  const leadMs = Math.max(0, PREORDER_CONFIG.minLeadMin||20) * 60000;
+  let earliestDt = new Date(now.getTime() + leadMs);
+  if(earliestDt.getTime() < openDt.getTime()) earliestDt = openDt;
+  const storeOpenNow = earliestDt.getTime() <= closeDt.getTime();
+  const hm = d => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return {
+    storeOpenNow,
+    minStr: hm(earliestDt),
+    // ຖ້າຮ້ານປິດຫຼັງທ່ຽງຄືນ ບໍ່ຕັ້ງ max (HTML time input ບໍ່ຮອງຮັບຂອບເຂດຂ້າມມື້) — ອີງໃສ່ isValidPreorderTime() ຢືນຢັນຕອນສົ່ງແທນ
+    maxStr: wrapsPastMidnight ? '' : hm(closeDt),
+    _openMs: openDt.getTime(), _closeMs: closeDt.getTime(), _earliestMs: earliestDt.getTime()
+  };
+}
+function isValidPreorderTime(hhmm){
+  if(!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return false;
+  const b = getPreorderTimeBounds();
+  if(!b.storeOpenNow) return false;
+  const [hh,mm] = hhmm.split(':').map(Number);
+  let picked = new Date(); picked.setHours(hh,mm,0,0);
+  if(picked.getTime() < b._openMs) picked = new Date(picked.getTime()+24*3600000); // ຮອງຮັບກໍລະນີຮ້ານປິດຫຼັງທ່ຽງຄືນ
+  return picked.getTime() >= b._earliestMs && picked.getTime() >= b._openMs && picked.getTime() <= b._closeMs;
 }
 
 // ─ ສ່ວນເພີ່ມໃນ modal-cart ສະເພາະໂໝດ preorder: ເລືອກເວລາ, ຊື່/ເບີ, ທະນາຄານ+ອັບໂຫລດສະລິບ ─
@@ -8448,12 +8457,15 @@ function renderPreorderExtra(){
     if(btnEl)  btnEl.textContent = '📤 ອັບໂຫລດສະລິບ & ສົ່ງ Order';
   }
 
-  const slots = generateTimeSlots();
-  if(!S.poSlot || !slots.includes(S.poSlot)) S.poSlot = slots[0] || '';
-  const slotHtml = slots.length
-    ? `<select class="form-input" id="po-slot" onchange="S.poSlot=this.value">
-        ${slots.map((s,i)=>`<option value="${s}" ${S.poSlot===s?'selected':''}>${s}${i===0?' (ໄວທີ່ສຸດ)':''}</option>`).join('')}
-      </select>`
+  const _poTimeBounds = getPreorderTimeBounds();
+  if(!S.poSlot || !isValidPreorderTime(S.poSlot)) S.poSlot = _poTimeBounds.minStr;
+  const slotHtml = _poTimeBounds.storeOpenNow
+    ? `<input type="time" class="form-input" id="po-slot" value="${S.poSlot}" min="${_poTimeBounds.minStr}" ${_poTimeBounds.maxStr?`max="${_poTimeBounds.maxStr}"`:''} step="60" onchange="S.poSlot=this.value; renderPreorderExtra();">
+       <div style="font-size:11px;margin-top:4px;color:${isValidPreorderTime(S.poSlot)?'var(--t3)':'#DC2626'}">
+         ${isValidPreorderTime(S.poSlot)
+           ? `⏰ ໄວທີ່ສຸດ ${_poTimeBounds.minStr}${_poTimeBounds.maxStr?' · ຮ້ານປິດ '+_poTimeBounds.maxStr:''} — ເລືອກເວລາໄດ້ຕາມໃຈ`
+           : '⚠️ ເວລານີ້ຢູ່ນອກຊ່ວງທີ່ຮ້ານຮັບອໍເດີ້ໄດ້ — ກະລຸນາເລືອກໃໝ່'}
+       </div>`
     : `<div style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:10px;border-radius:8px">⚠️ ຕອນນີ້ຢູ່ນອກເວລາເປີດ-ປິດຮ້ານ (${STORE_INFO.open||'—'}–${STORE_INFO.close||'—'}), ບໍ່ສາມາດນັດຮັບໄດ້ໃນຕອນນີ້ / Outside operating hours</div>`;
 
   const bankEntries = Object.entries(BANK_QR);
@@ -8472,8 +8484,8 @@ function renderPreorderExtra(){
             <div style="font-size:18px;color:${sel?'var(--brand)':'#D1D5DB'};flex-shrink:0">${sel?'✅':'○'}</div>
           </div>
           ${sel && hasQR ? `<div style="padding:0 14px 14px;text-align:center;border-top:1px dashed #E5E7EB;padding-top:12px">
-              <img src="${b.img}" style="width:200px;max-width:100%;height:200px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid #E5E7EB">
-              <div style="font-size:12px;color:#6B7280;margin-top:6px">📷 ສະແກນ QR ນີ້ເພື່ອໂອນເງິນ / Scan this QR to pay</div>
+              <img src="${b.img}" style="width:100%;aspect-ratio:1/1;object-fit:contain;background:#fff;border-radius:12px;border:1px solid #E5E7EB;display:block">
+              <div style="font-size:12px;color:#6B7280;margin-top:8px">📷 ສະແກນ QR ນີ້ເພື່ອໂອນເງິນ / Scan this QR to pay</div>
             </div>` : ''}
           ${sel && !hasQR ? `<div style="padding:0 14px 14px;font-size:12px;color:#DC2626">⚠️ [ຕ້ອງຢືນຢັນ] ຍັງບໍ່ໄດ້ອັບໂຫລດຮູບ QR ສຳລັບຊ່ອງທາງນີ້ — ໄປຕັ້ງຄ່າໃນ Settings ▸ ຊ່ອງທາງຊຳລະ</div>` : ''}
         </div>`;
@@ -8544,7 +8556,9 @@ function handleSlipUpload(input){
 
 function custConfirmPreorder(items){
   if(!items.length) return;
-  if(!S.poSlot){ toast('ກະລຸນາເລືອກຊ່ວງເວລານັດຮັບ','error'); return; }
+  const slotInput = document.getElementById('po-slot'); if(slotInput?.value) S.poSlot = slotInput.value;
+  if(!S.poSlot){ toast('ກະລຸນາເລືອກເວລານັດຮັບ','error'); return; }
+  if(!isValidPreorderTime(S.poSlot)){ toast('ເວລານັດຮັບບໍ່ຖືກຕ້ອງ — ຕ້ອງຢູ່ໃນເວລາເປີດຮ້ານ ແລະ ຢ່າງໜ້ອຍ '+(PREORDER_CONFIG.minLeadMin||20)+' ນາທີລ່ວງໜ້າ','error'); renderPreorderExtra(); return; }
   const name  = (document.getElementById('po-name')?.value  || S.poName  || '').trim();
   const phone = (document.getElementById('po-phone')?.value || S.poPhone || '').trim();
   if(!name || !phone){ toast('ກະລຸນາໃສ່ຊື່ ແລະ ເບີໂທ','error'); return; }
@@ -8945,16 +8959,13 @@ function printPreorderReceipt(id){
   }
 }
 
-// ─ Settings: ໄລຍະຫ່າງຊ່ວງເວລາ / lead time ຂັ້ນຕ່ຳ ─
+// ─ Settings: lead time ຂັ້ນຕ່ຳ (slotIntervalMin ຍັງເກັບໄວ້ໃນຂໍ້ມູນເພື່ອຄວາມເຂົ້າກັນໄດ້ຍ້ອນຫຼັງ ແຕ່ບໍ່ໃຊ້ແລ້ວ ນັບແຕ່ລູກຄ້າເລືອກເວລາເອງໄດ້ອິດສະຫຼະ) ─
 function renderPreorderConfigSettings(){
-  const i=document.getElementById('po-cfg-interval'), l=document.getElementById('po-cfg-lead');
-  if(i) i.value = PREORDER_CONFIG.slotIntervalMin;
+  const l=document.getElementById('po-cfg-lead');
   if(l) l.value = PREORDER_CONFIG.minLeadMin;
 }
 function savePreorderConfig(){
-  const i=parseInt(document.getElementById('po-cfg-interval')?.value,10);
   const l=parseInt(document.getElementById('po-cfg-lead')?.value,10);
-  if(i>0) PREORDER_CONFIG.slotIntervalMin=i;
   if(l>0) PREORDER_CONFIG.minLeadMin=l;
   if(fbDB) fbSaveStore();
   toast('✅ ບັນທຶກຄ່າສັ່ງລ່ວງໜ້າແລ້ວ','success');
@@ -12232,7 +12243,7 @@ function fbListenStore(){
     }
     if(d.preorderConfig){
       Object.assign(PREORDER_CONFIG, d.preorderConfig);
-      if(typeof renderPreorderConfigSettings==='function' && document.getElementById('po-cfg-interval')) renderPreorderConfigSettings();
+      if(typeof renderPreorderConfigSettings==='function' && document.getElementById('po-cfg-lead')) renderPreorderConfigSettings();
     }
   });
 }
