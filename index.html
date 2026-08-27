@@ -8714,6 +8714,9 @@ function renderPreorders(){
     if(o.status==='confirmed'||o.status==='ready'||o.status==='completed'){
       actions += `<button class="btn btn-ghost btn-sm" onclick="printPreorderReceipt('${o._id}')">🖨️ ພິມບິນ</button>`;
     }
+    if(S.user?.role==='admin'){
+      actions += `<button class="btn btn-ghost btn-sm" style="color:var(--c-red,#DC2626)" onclick="deletePreorder('${o._id}')">🗑️ ລຶບ</button>`;
+    }
     const paymentTag = o.slipImg
       ? `<img src="${o.slipImg}" style="width:26px;height:26px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--bdr);flex-shrink:0" onclick="openSlipView('${o._id}')">`
       : (o.payMethod==='cash'
@@ -8753,6 +8756,25 @@ function rejectPreorder(id){
   if(!fbDB) return;
   fbDB.ref(BRANCH_PATH+'preorders/'+id).update({status:'rejected'})
     .then(()=>toast('ປະຕິເສດອໍເດີ້ແລ້ວ','info')).catch(()=>toast('ຜິດພາດ','error'));
+}
+// ─ ລຶບອໍເດີ້ລ່ວງໜ້າຖາວອນ (Admin ເທົ່ານັ້ນ) — ໃຊ້ລຶບຂໍ້ມູນທົດສອບ/ຜິດພາດ ─
+function deletePreorder(id){
+  if(S.user?.role !== 'admin'){ toast('ລຶບໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
+  const o = PREORDERS[id];
+  const linkedBill = BILLS.find(b=>b.preorderId===id);
+  const warnBill = linkedBill ? `\n\n⚠️ ອໍເດີ້ນີ້ມີບິນ ${linkedBill.id} (${fmt(linkedBill.total||0)}) ຢູ່ໃນລະບົບ — ຈະຖືກລຶບອອກນຳ ແລະ ຍອດຂາຍຈະຫາຍໄປຈາກ Dashboard/ລາຍງານ` : '';
+  if(!confirm(`ລຶບອໍເດີ້ລ່ວງໜ້າ ${o?.name||''} ອອກຖາວອນ?${warnBill}\n\nການລຶບນີ້ຈະລຶບອອກຈາກ Firebase ຈິງ — ບໍ່ສາມາດກູ້ຄືນໄດ້`)) return;
+  delete PREORDERS[id];
+  if(fbDB) fbDB.ref(BRANCH_PATH+'preorders/'+id).remove().catch(e=>{});
+  if(linkedBill){
+    const idx = BILLS.indexOf(linkedBill);
+    if(idx>-1) BILLS.splice(idx,1);
+    if(fbDB) fbDB.ref(BRANCH_PATH+'bills/'+linkedBill.id).remove().catch(e=>{});
+    renderDash();
+    if(document.getElementById('bills-tbody')) renderBills();
+  }
+  renderPreorders();
+  toast('✅ ລຶບອໍເດີ້ລ່ວງໜ້າແລ້ວ','success');
 }
 function markPreorderReady(id){
   if(!fbDB) return;
