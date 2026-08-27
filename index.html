@@ -10022,7 +10022,7 @@ function deleteVoidedSaleMovement(id){
 
 /* ── STOCK ITEM CRUD ── */
 function openStockItemModal(id=null){
-  if(S.user?.role==='cashier'||S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
+  if(S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
   if(id && S.user?.role !== 'admin'){ toast('ແກ້ໄຂໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
   const s = id ? STOCK_ITEMS.find(x=>x.id===id) : null;
   const ov = document.createElement('div');
@@ -10078,7 +10078,7 @@ function _siToggleCup(){
   if(wrap) wrap.style.display = type==='cup' ? '' : 'none';
 }
 function saveStockItem(id){
-  if(S.user?.role==='cashier'||S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
+  if(S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
   if(id && S.user?.role !== 'admin'){ toast('ແກ້ໄຂໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
   const name = document.getElementById('si-name').value.trim();
   const type = document.getElementById('si-type').value;
@@ -10136,7 +10136,7 @@ function switchStockTab(tab, el){
 
 function renderStockView(){
   const stkBtns = document.getElementById('stock-header-btns');
-  if(stkBtns) stkBtns.style.display = (S.user?.role==='cashier'||S.user?.role==='accounting') ? 'none' : '';
+  if(stkBtns) stkBtns.style.display = (S.user?.role==='accounting') ? 'none' : '';
   ['product','material'].forEach(w=>{
     const b = document.getElementById(`swh-${w}`);
     if(!b) return;
@@ -10253,7 +10253,7 @@ function openStockOutModal(){ _openStockMoveModal('out'); }
 let _smItems = [];
 let _smKind = 'in';
 function _openStockMoveModal(kind){
-  if(S.user?.role==='cashier'||S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
+  if(S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
   if(!STOCK_ITEMS.length){ toast('ຍັງບໍ່ມີລາຍການສາງ — ເພີ່ມລາຍການສາງກ່ອນ','error'); return; }
   _smKind = kind;
   _smItems = [{stockItemId: STOCK_ITEMS[0].id, qty:'', price: STOCK_ITEMS[0].price||''}];
@@ -10321,7 +10321,7 @@ function smRenderItems(){
     </div>`).join('');
 }
 function saveStockMove(kind){
-  if(S.user?.role==='cashier'||S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
+  if(S.user?.role==='accounting'){ toast('ເບິ່ງລາຍການສາງໄດ້ຢ່າງດຽວ','error'); return; }
   const date = document.getElementById('sm-date')?.value;
   const note = document.getElementById('sm-note')?.value.trim()||'';
   const by = document.getElementById('sm-by')?.value.trim() || ((S.user&&S.user.name)||'ພະນັກງານ');
