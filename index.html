@@ -1521,6 +1521,30 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
 
       </section>
 
+      <!-- ── ສັ່ງລ່ວງໜ້າ / PRE-ORDERS (scheduled pickup) ── -->
+      <section id="view-preorders" class="view hidden">
+        <div class="page-header">
+          <div class="page-header-left">
+            <div class="title">🕒 ສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ</div>
+            <div class="sub">Pre-orders — ລູກຄ້າສັ່ງລ່ວງໜ້າ ແລະ ໂອນເງິນມາແລ້ວ, ລໍພະນັກງານກວດສະລິບ</div>
+          </div>
+          <button class="btn btn-ghost" onclick="openPreorderQR()">🔗 QR ສັ່ງລ່ວງໜ້າ</button>
+        </div>
+
+        <div class="card" style="margin-bottom:14px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="po-filter-tabs">
+            <button class="btn btn-primary btn-sm" id="pof-all" onclick="setPreorderFilter('all',this)">ທັງໝົດ</button>
+            <button class="btn btn-ghost btn-sm" id="pof-awaiting_verify" onclick="setPreorderFilter('awaiting_verify',this)">🟡 ລໍກວດສະລິບ</button>
+            <button class="btn btn-ghost btn-sm" id="pof-confirmed" onclick="setPreorderFilter('confirmed',this)">🟢 ຢືນຢັນແລ້ວ</button>
+            <button class="btn btn-ghost btn-sm" id="pof-ready" onclick="setPreorderFilter('ready',this)">🔵 ພ້ອມຮັບ</button>
+            <button class="btn btn-ghost btn-sm" id="pof-completed" onclick="setPreorderFilter('completed',this)">✅ ຮັບແລ້ວ</button>
+            <button class="btn btn-ghost btn-sm" id="pof-rejected" onclick="setPreorderFilter('rejected',this)">❌ ປະຕິເສດ</button>
+          </div>
+        </div>
+
+        <div id="preorder-list" style="display:flex;flex-direction:column;gap:12px"></div>
+      </section>
+
       <!-- ── MENU MGMT ── -->
       <section id="view-menu" class="view hidden">
         <div class="page-header">
@@ -1873,6 +1897,20 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
                   <input class="form-input" type="time" id="st-shop-close" value="22:00" oninput="liveApplyStore()">
                 </div>
               </div>
+
+              <!-- PRE-ORDER (ສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ) CONFIG -->
+              <div class="set-sec-title" style="margin-top:14px">🕒 ຕັ້ງຄ່າ ສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">ໄລຍະຫ່າງລະຫວ່າງຊ່ວງເວລາ (ນາທີ)</label>
+                  <input class="form-input" type="number" min="5" step="5" id="po-cfg-interval" value="15" onchange="savePreorderConfig()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">ນັດລ່ວງໜ້າຂັ້ນຕ່ຳ (ນາທີ)</label>
+                  <input class="form-input" type="number" min="10" step="5" id="po-cfg-lead" value="20" onchange="savePreorderConfig()">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--t3);margin:-6px 0 4px">ຊ່ວງເວລານັດຮັບຈະຄິດໄລ່ຈາກເວລາ "ເປີດ-ປິດຮ້ານ" ຂ້າງເທິງ ⚠️ [ຕ້ອງຢືນຢັນ ໃຫ້ຖືກຕ້ອງກ່ອນເປີດໃຊ້ຈິງ]</div>
               <div class="form-group">
                 <label class="form-label">ຂໍ້ຄວາມໃບບິນ</label>
                 <input class="form-input" id="st-shop-msg" value="ຂອບໃຈທີ່ໃຊ້ບໍລິການ! ຍິນດີຕ້ອນຮັບໃໝ່ 🙏" oninput="liveApplyStore()">
@@ -2655,8 +2693,34 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button class="btn btn-ghost" onclick="closeModal('modal-qr')">ປິດ</button>
-      
+
     </div>
+  </div>
+</div>
+
+<!-- PRE-ORDER QR MODAL (scheduled pickup — separate QR from table QR) -->
+<div class="modal-bd hidden" id="modal-preorder-qr">
+  <div class="modal-box" style="max-width:380px">
+    <div style="text-align:center;margin-bottom:6px">
+      <div style="font-size:18px;font-weight:900;color:var(--t1)">🕒 QR ສັ່ງລ່ວງໜ້າ</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px">ໃຫ້ລູກຄ້າ (ເຊັ່ນ: ນັກຮຽນ) ສະແກນ ເພື່ອສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;margin:18px 0">
+      <div style="width:200px;height:200px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;padding:12px;box-shadow:0 4px 24px rgba(0,0,0,.12);border:1px solid var(--bdr)">
+        <div id="preorder-qr-svg" style="display:flex;justify-content:center;min-height:180px;align-items:center"></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;font-weight:600;color:var(--t3);background:var(--panel-bg2);padding:5px 14px;border-radius:var(--r-full);border:1px solid var(--bdr);word-break:break-all;text-align:center" id="preorder-qr-url"></div>
+    </div>
+    <div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:14px">📌 ພິມ ຫຼື ບັນທຶກຮູບນີ້ ໄປຕິດໄວ້ນອກຮ້ານ / ໃນໂຮງຮຽນ</div>
+    <button class="btn btn-ghost w-full" onclick="closeModal('modal-preorder-qr')">ປິດ</button>
+  </div>
+</div>
+
+<!-- SLIP IMAGE VIEW MODAL (staff — full-size ຮູບສະລິບໂອນເງິນ) -->
+<div class="modal-bd hidden" id="modal-slip-view" onclick="if(event.target===this)closeModal('modal-slip-view')">
+  <div style="max-width:min(420px,92vw);background:#fff;border-radius:16px;padding:14px;text-align:center">
+    <img id="slip-view-img" style="width:100%;border-radius:10px;display:block" src="">
+    <button class="btn btn-ghost w-full" style="margin-top:12px" onclick="closeModal('modal-slip-view')">ປິດ</button>
   </div>
 </div>
 
@@ -3030,10 +3094,12 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
       <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px">📝 ໝາຍເຫດ / ຂໍພິເສດ (ຖ້າມີ) — Notes / Special request</label>
       <textarea id="cust-remark" rows="2" placeholder="ເຊັ່ນ: ເຜັດຫຼາຍ, ບໍ່ໃສ່ນ້ຳຕານ... / e.g. extra spicy, no sugar..." style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #E5E7EB;font-size:13px;font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;color:#1C1917;resize:none;outline:none;box-sizing:border-box;transition:border .2s" onfocus="this.style.borderColor='#2E8B57'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
     </div>
-    <div style="font-size:11px;color:#9CA3AF;margin:4px 0 10px;text-align:center">⚠️ ພະນັກງານຈະຈົດ Order ແລ້ວ ຮຽກ Order ຕໍ່ຫ້ອງຄົວ<br>Staff will note your order and send it to the kitchen</div>
+    <!-- Pre-order only (S.custMode==='preorder'): pickup slot, name/phone, bank transfer + slip upload -->
+    <div id="cust-preorder-extra"></div>
+    <div style="font-size:11px;color:#9CA3AF;margin:4px 0 10px;text-align:center" id="cust-cart-note">⚠️ ພະນັກງານຈະຈົດ Order ແລ້ວ ຮຽກ Order ຕໍ່ຫ້ອງຄົວ<br>Staff will note your order and send it to the kitchen</div>
     <div style="display:flex;gap:10px">
       <button onclick="closeModal('modal-cart')" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans Lao',sans-serif;color:#374151">ແກ້ໄຂ / Edit</button>
-      <button onclick="custConfirmOrder()" style="flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#2E8B57,#DC2626);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:'Noto Sans Lao',sans-serif;box-shadow:0 4px 14px rgba(31,107,69,.4)">✅ ຢືນຢັນ Order / Confirm</button>
+      <button id="cust-cart-confirm-btn" onclick="custConfirmOrder()" style="flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#2E8B57,#DC2626);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:'Noto Sans Lao',sans-serif;box-shadow:0 4px 14px rgba(31,107,69,.4)">✅ ຢືນຢັນ Order / Confirm</button>
     </div>
   </div>
 </div>
@@ -3077,15 +3143,16 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
    DATA
 ================================================================ */
 const RC = {
-  admin:   {label:'Admin',     icon:'👑', cls:'bo', navs:['dashboard','pos','menu','stock','reports','eod','loyalty','settings']},
-  manager: {label:'ຜູ້ຈັດການ', icon:'🏪', cls:'bb', navs:['dashboard','pos','menu','stock','reports','eod','loyalty','settings']},
-  staff:   {label:'ພະນັກງານ', icon:'🧑', cls:'bg', navs:['pos','stock']},
-  cashier: {label:'Cashier',   icon:'💵', cls:'by', navs:['dashboard','pos','menu','stock','loyalty','reports','eod']},
+  admin:   {label:'Admin',     icon:'👑', cls:'bo', navs:['dashboard','pos','preorders','menu','stock','reports','eod','loyalty','settings']},
+  manager: {label:'ຜູ້ຈັດການ', icon:'🏪', cls:'bb', navs:['dashboard','pos','preorders','menu','stock','reports','eod','loyalty','settings']},
+  staff:   {label:'ພະນັກງານ', icon:'🧑', cls:'bg', navs:['pos','preorders','stock']},
+  cashier: {label:'Cashier',   icon:'💵', cls:'by', navs:['dashboard','pos','preorders','menu','stock','loyalty','reports','eod']},
   accounting: {label:'ບັນຊີ', icon:'🧮', cls:'bp', navs:['dashboard','pos','menu','stock','loyalty','reports']},
 };
 const NC = {
   dashboard:{label:'Dashboard',     icon:'🏠', sec:'ຫຼັກ'},
   pos:      {label:'ໂຕະ & Order',   icon:'🪑', sec:'ດຳເນີນງານ'},
+  preorders:{label:'ສັ່ງລ່ວງໜ້າ',    icon:'🕒', sec:'ດຳເນີນງານ'},
   menu:     {label:'ເມນູ',           icon:'📖', sec:'ຈັດການ'},
   stock:    {label:'ສາງ',            icon:'🏬', sec:'ຈັດການ'},
   loyalty:  {label:'Loyalty Points', icon:'🎁', sec:'ຈັດການ'},
@@ -3098,6 +3165,7 @@ const NC = {
 const PERM_LBL = {
   dashboard:'🏠 Dashboard',
   pos:'🪑 ໂຕະ & Order',
+  preorders:'🕒 ສັ່ງລ່ວງໜ້າ',
   menu:'📖 ເມນູ',
   reports:'📊 ລາຍງານ',
   eod:'🌙 ສິ້ນວັນ',
@@ -3123,11 +3191,11 @@ let USERS_DATA = [
 ];
 
 let ROLES_DATA = [
-  {id:1,name:'Admin',icon:'👑',perms:{dashboard:true,pos:true,bills:true,tables:true,menu:true,users:true,roles:true,reports:true,settings:true}},
-  {id:2,name:'ຜູ້ຈັດການ',icon:'📋',perms:{dashboard:true,pos:true,bills:true,tables:true,menu:true,users:false,roles:false,reports:true,settings:true}},
-  {id:3,name:'ພະນັກງານ',icon:'👨‍🍳', perms:{dashboard:false,pos:true,bills:true,tables:true,menu:false,users:false,roles:false,reports:false,settings:false}},
-  {id:4,name:'Cashier',icon:'💵',perms:{dashboard:false,pos:true,bills:true,tables:true,menu:false,users:false,roles:false,reports:false,settings:false}},
-  {id:5,name:'ບັນຊີ (Accounting)',icon:'🧮',perms:{dashboard:false,pos:true,bills:true,tables:true,menu:false,users:false,roles:false,reports:true,settings:false}},
+  {id:1,name:'Admin',icon:'👑',perms:{dashboard:true,pos:true,preorders:true,bills:true,tables:true,menu:true,users:true,roles:true,reports:true,settings:true}},
+  {id:2,name:'ຜູ້ຈັດການ',icon:'📋',perms:{dashboard:true,pos:true,preorders:true,bills:true,tables:true,menu:true,users:false,roles:false,reports:true,settings:true}},
+  {id:3,name:'ພະນັກງານ',icon:'👨‍🍳', perms:{dashboard:false,pos:true,preorders:true,bills:true,tables:true,menu:false,users:false,roles:false,reports:false,settings:false}},
+  {id:4,name:'Cashier',icon:'💵',perms:{dashboard:false,pos:true,preorders:true,bills:true,tables:true,menu:false,users:false,roles:false,reports:false,settings:false}},
+  {id:5,name:'ບັນຊີ (Accounting)',icon:'🧮',perms:{dashboard:false,pos:true,preorders:false,bills:true,tables:true,menu:false,users:false,roles:false,reports:true,settings:false}},
 ];
 
 let BILLS = []
@@ -3154,6 +3222,11 @@ let BANK_QR = {
 };
 // Dedicated checkout snapshot — immune to posItems being cleared
 let CHECKOUT_SNAP = null;
+
+// ── ສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ (Pre-order / scheduled pickup) config ──
+// slotIntervalMin: ໄລຍະຫ່າງລະຫວ່າງແຕ່ລະຊ່ວງເວລານັດຮັບ (ນາທີ) — ປັບໄດ້ໃນ Settings
+// minLeadMin: ຕ້ອງນັດລ່ວງໜ້າຢ່າງໜ້ອຍເທົ່າໃດນາທີ ນັບແຕ່ຕອນສັ່ງ
+let PREORDER_CONFIG = { slotIntervalMin: 15, minLeadMin: 20 };
 
 /* ================================================================
    STORE INFO (ຂໍ້ມູນຮ້ານ)
@@ -3941,7 +4014,7 @@ function buildNav(navs){
   const nav=document.getElementById('sb-nav'); nav.innerHTML='';
   let lastSec='';
   // Fixed order: logical grouping
-  const ORDER = ['dashboard','pos','menu','stock','loyalty','reports','eod','settings'];
+  const ORDER = ['dashboard','pos','preorders','menu','stock','loyalty','reports','eod','settings'];
   ORDER.forEach(k=>{
     if(!navs.includes(k)) return;
     const c=NC[k];
@@ -4010,7 +4083,7 @@ function renderView(v){
     setTab('roles', document.querySelectorAll('.set-nav-item')[7] || {classList:{add:()=>{},remove:()=>{}}});
     return;
   }
-  ({dashboard:renderDash,menu:renderMenuMgmt,users:renderUsers,roles:renderRoles,reports:renderReportsView,eod:renderEOD,stock:renderStockView}[v]||function(){})();
+  ({dashboard:renderDash,menu:renderMenuMgmt,users:renderUsers,roles:renderRoles,reports:renderReportsView,eod:renderEOD,stock:renderStockView,preorders:renderPreorders}[v]||function(){})();
 }
 
 /* ================================================================
@@ -7990,7 +8063,7 @@ function simCust(){
 ================================================================ */
 let custCat='ທັງໝົດ';
 function showCustPage(tbl){
-  S.custTable=tbl;S.custCart={};
+  S.custMode='dinein';S.custTable=tbl;S.custCart={};
   document.getElementById('app-shell').style.display='none';
   const cp=document.getElementById('page-customer');cp.style.display='block';
   // Show table NAME (not ID)
@@ -7998,6 +8071,9 @@ function showCustPage(tbl){
   const _ctName = _ct ? _ct.name : `T${tbl}`;
   S.custTableName = _ctName;
   document.getElementById('cust-tbl-lbl').textContent=`ໂຕະ ${_ctName} · ${STORE_INFO.name||'Greenhouse'}`;
+  // ໂໝດ preorder ອາດເຊື່ອງປຸ່ມພວກນີ້ໄວ້ — ໂໝດໂຕະປົກກະຕິຕ້ອງໃຫ້ເຫັນຄືນ
+  const billBtn = document.getElementById('cust-bill-btn'); if(billBtn) billBtn.style.display='';
+  const callBtn = document.getElementById('cust-callstaff-btn'); if(callBtn) callBtn.style.display='';
   S.custPageOpenedAt = Date.now();
   renderCustCatTabs();
   renderCustMenu();
@@ -8246,6 +8322,11 @@ function custQty(id, delta){
   updateCartBar();
 }
 
+// NOTE: pre-existing calls in this file reference updateCustCartBadge() which was
+// never defined — that threw a ReferenceError and silently skipped whatever ran
+// after it (e.g. updateCartBar()/renderCustMenu() on the same line). Defining it
+// as an alias fixes that latent bug without changing any existing behavior.
+function updateCustCartBadge(){ updateCartBar(); }
 function updateCartBar(){
   const items=Object.values(S.custCart);
   const qty=items.reduce((a,i)=>a+i.qty,0);
@@ -8295,6 +8376,7 @@ function renderCartModal(){
     <div style="display:flex;justify-content:space-between;font-size:13px;color:#78716C;padding:5px 0"><span>ລວມ / Subtotal</span><span>${fmt(sub)}</span></div>
     ${vat>0?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#78716C;padding:5px 0"><span>${vatLabel()}</span><span>${fmt(vat)}</span></div>`:''}
     <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:900;color:#2E8B57;margin-top:8px;padding-top:10px;border-top:2px solid #F5F5F4"><span>ທັງໝົດ / Total</span><span>${fmt(sub+vat)}</span></div>`;
+  renderPreorderExtra();
 }
 function cartItemQty(key,delta){
   if(!S.custCart[key])return;
@@ -8304,6 +8386,341 @@ function cartItemQty(key,delta){
   else{renderCartModal();}
   updateCustCartBadge();updateCartBar();renderCustMenu();
 }
+
+/* ================================================================
+   ສັ່ງລ່ວງໜ້າ ນັດເວລາມາຮັບ (PRE-ORDER / SCHEDULED PICKUP)
+   ແຍກຈາກ dine-in ໂດຍສິ້ນເຊີງ — ໃຊ້ Firebase path preorders/ (ບໍ່ຜູກກັບໂຕະ)
+   ອໍເດີ້ຈະ 'awaiting_verify' ຈົນກວ່າພະນັກງານກວດສະລິບແລ້ວກົດຢືນຢັນ
+================================================================ */
+let PREORDERS = {};       // orderId -> record, synced live from Firebase
+let poFilter = 'all';     // staff-side filter tab
+let _myPoRef = null;      // customer-side: listener on their own order, for live status
+
+// ─ ຄິດໄລ່ຊ່ວງເວລານັດຮັບທີ່ເລືອກໄດ້ (ອີງເວລາເປີດ-ປິດຮ້ານ + ໄລຍະຫ່າງ + lead time ຂັ້ນຕ່ຳ) ─
+function generateTimeSlots(){
+  const openStr  = STORE_INFO.open  || '09:00';
+  const closeStr = STORE_INFO.close || '22:00';
+  const [oh,om] = openStr.split(':').map(Number);
+  const [ch,cm] = closeStr.split(':').map(Number);
+  const now = new Date();
+  const openDt = new Date(now); openDt.setHours(oh||0, om||0, 0, 0);
+  let closeDt  = new Date(now); closeDt.setHours(ch||0, cm||0, 0, 0);
+  if(closeDt.getTime() <= openDt.getTime()) closeDt = new Date(closeDt.getTime() + 24*3600000); // ຮ້ານປິດຫຼັງທ່ຽງຄືນ
+  const interval = Math.max(5, PREORDER_CONFIG.slotIntervalMin||15) * 60000;
+  const leadMs   = Math.max(0, PREORDER_CONFIG.minLeadMin||20) * 60000;
+  const earliest = now.getTime() + leadMs;
+  let start = Math.max(earliest, openDt.getTime());
+  const fromOpen = Math.max(0, start - openDt.getTime());
+  start = openDt.getTime() + Math.ceil(fromOpen / interval) * interval;
+  const slots = [];
+  for(let t=start; t<=closeDt.getTime(); t+=interval){
+    const d = new Date(t);
+    slots.push(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);
+  }
+  return slots;
+}
+
+// ─ ສ່ວນເພີ່ມໃນ modal-cart ສະເພາະໂໝດ preorder: ເລືອກເວລາ, ຊື່/ເບີ, ທະນາຄານ+ອັບໂຫລດສະລິບ ─
+function renderPreorderExtra(){
+  const wrap  = document.getElementById('cust-preorder-extra');
+  const noteEl = document.getElementById('cust-cart-note');
+  const btnEl  = document.getElementById('cust-cart-confirm-btn');
+  if(!wrap) return;
+  if(S.custMode !== 'preorder'){
+    wrap.innerHTML = '';
+    if(noteEl) noteEl.innerHTML = '⚠️ ພະນັກງານຈະຈົດ Order ແລ້ວ ຮຽກ Order ຕໍ່ຫ້ອງຄົວ<br>Staff will note your order and send it to the kitchen';
+    if(btnEl)  btnEl.textContent = '✅ ຢືນຢັນ Order / Confirm';
+    return;
+  }
+  if(noteEl) noteEl.innerHTML = '⚠️ ອໍເດີ້ຈະຖືກຮັບ ກໍ່ຕໍ່ເມື່ອທ່ານອັບໂຫລດສະລິບ ແລະ ພະນັກງານກວດສອບແລ້ວ<br>Your order is accepted only after uploading the slip and staff verification';
+  if(btnEl)  btnEl.textContent = '📤 ອັບໂຫລດສະລິບ & ສົ່ງ Order';
+
+  const slots = generateTimeSlots();
+  if(!S.poSlot || !slots.includes(S.poSlot)) S.poSlot = slots[0] || '';
+  const slotHtml = slots.length
+    ? `<select class="form-input" id="po-slot" onchange="S.poSlot=this.value">
+        ${slots.map((s,i)=>`<option value="${s}" ${S.poSlot===s?'selected':''}>${s}${i===0?' (ໄວທີ່ສຸດ)':''}</option>`).join('')}
+      </select>`
+    : `<div style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:10px;border-radius:8px">⚠️ ຕອນນີ້ຢູ່ນອກເວລາເປີດ-ປິດຮ້ານ (${STORE_INFO.open||'—'}–${STORE_INFO.close||'—'}), ບໍ່ສາມາດນັດຮັບໄດ້ໃນຕອນນີ້ / Outside operating hours</div>`;
+
+  const bankEntries = Object.entries(BANK_QR);
+  const bankHtml = bankEntries.length
+    ? bankEntries.map(([key,b])=>`
+        <div style="display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;background:#fff;border:1px solid #E5E7EB;margin-bottom:8px">
+          ${b.img?`<img src="${b.img}" style="width:52px;height:52px;object-fit:contain;border-radius:8px;border:1px solid #E5E7EB;flex-shrink:0">`:`<div style="width:52px;height:52px;border-radius:8px;background:${b.color||'#374151'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${b.icon||'🏦'}</div>`}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:800;color:#1C1917">${b.name||key}</div>
+            <div style="font-size:12px;color:#6B7280">${b.account?b.account:'⚠️ ຍັງບໍ່ໄດ້ຕັ້ງເລກບັນຊີ'}${b.holder?' · '+b.holder:''}</div>
+          </div>
+        </div>`).join('')
+    : `<div style="font-size:12px;color:#DC2626">⚠️ [ຕ້ອງຢືນຢັນ] ຮ້ານຍັງບໍ່ທັນຕັ້ງຄ່າຊ່ອງທາງທະນາຄານ — ໄປຕັ້ງຄ່າໃນ Settings ▸ ຊ່ອງທາງຊຳລະ ກ່ອນ</div>`;
+
+  wrap.innerHTML = `
+    <div style="margin:14px 0 10px">
+      <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px">🕒 ຊ່ວງເວລານັດຮັບ — Pickup time (ຢ່າງໜ້ອຍ ${PREORDER_CONFIG.minLeadMin||20} ນາທີລ່ວງໜ້າ)</label>
+      ${slotHtml}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px">ຊື່ຜູ້ຮັບ *</label>
+        <input class="form-input" id="po-name" placeholder="ຊື່" value="${S.poName||''}" oninput="S.poName=this.value">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px">ເບີໂທ *</label>
+        <input class="form-input" id="po-phone" placeholder="020xxxxxxxx" value="${S.poPhone||''}" oninput="S.poPhone=this.value">
+      </div>
+    </div>
+    <div style="background:#F9FAFB;border-radius:12px;padding:12px;margin-bottom:6px">
+      <div style="font-size:12px;font-weight:700;color:#6B7280;margin-bottom:8px">💳 ໂອນເງິນຈ່າຍລ່ວງໜ້າ (ບັງຄັບ) — Pay by bank transfer, required</div>
+      ${bankHtml}
+      <div class="img-upload-zone ${S.poSlipData?'has-img':''}" id="po-slip-zone" style="height:140px;margin-top:6px" onclick="document.getElementById('po-slip-file').click()">
+        <img id="po-slip-preview" src="${S.poSlipData||''}" style="display:${S.poSlipData?'block':'none'}">
+        <div id="po-slip-placeholder" style="display:${S.poSlipData?'none':'flex'};flex-direction:column;align-items:center">
+          <span style="font-size:22px">📷</span>
+          <span style="font-size:11px;color:var(--t3);margin-top:4px;text-align:center">ອັບໂຫລດຮູບສະລິບໂອນເງິນ<br>Upload transfer slip photo</span>
+        </div>
+        <div class="img-overlay" style="font-size:16px">✏️</div>
+        <input type="file" accept="image/*" id="po-slip-file" style="display:none" onchange="handleSlipUpload(this)">
+      </div>
+    </div>`;
+}
+
+function handleSlipUpload(input){
+  const file = input.files[0]; if(!file) return;
+  if(file.size > 10*1024*1024){ toast('ຮູບໃຫຍ່ເກີນ 10MB','error'); return; }
+  toast('🔄 ກຳລັງ compress ຮູບ...','info');
+  compressImage(file, 900, 0.8, compressed=>{
+    if(!compressed){ toast('ອັບໂຫລດບໍ່ສຳເລັດ','error'); return; }
+    S.poSlipData = compressed;
+    renderPreorderExtra();
+    toast('✅ ອັບໂຫລດສະລິບແລ້ວ','success');
+  });
+}
+
+function custConfirmPreorder(items){
+  if(!items.length) return;
+  if(!S.poSlot){ toast('ກະລຸນາເລືອກຊ່ວງເວລານັດຮັບ','error'); return; }
+  const name  = (document.getElementById('po-name')?.value  || S.poName  || '').trim();
+  const phone = (document.getElementById('po-phone')?.value || S.poPhone || '').trim();
+  if(!name || !phone){ toast('ກະລຸນາໃສ່ຊື່ ແລະ ເບີໂທ','error'); return; }
+  if(!S.poSlipData){ toast('ກະລຸນາອັບໂຫລດຮູບສະລິບໂອນເງິນກ່ອນ ຈຶ່ງສົ່ງ Order ໄດ້','error'); return; }
+  if(!fbDB){ toast('ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບ — ລອງໃໝ່','error'); return; }
+
+  const remark = document.getElementById('cust-remark')?.value.trim() || '';
+  const sub = items.reduce((a,i)=>a+i.price*i.qty,0);
+  const vat = Math.round(sub*getVatRate());
+  const orderId = 'po_'+Date.now();
+  const payload = {
+    orderId, items, name, phone, slot:S.poSlot, remark,
+    sub, vat, total: sub+vat,
+    slipImg: S.poSlipData,
+    status: 'awaiting_verify',
+    time: new Date().toLocaleTimeString('lo-LA'),
+    ts: Date.now(), origin: SESSION_ID
+  };
+  fbDB.ref(BRANCH_PATH+'preorders/'+orderId).set(payload)
+    .then(()=>{
+      closeModal('modal-cart');
+      S.custCart = {}; S.poSlipData=null; S.poSlot=''; S.poName=name; S.poPhone=phone;
+      updateCartBar(); renderCustMenu();
+      _showPreorderSuccess(orderId, payload);
+    })
+    .catch(e=>{ console.warn('custConfirmPreorder:',e); toast('ສົ່ງ Order ບໍ່ສຳເລັດ — ລອງໃໝ່','error'); });
+}
+
+// ─ Full-screen success/live-status overlay ຫຼັງລູກຄ້າສົ່ງ pre-order ────────
+function _showPreorderSuccess(orderId, payload){
+  const div = document.createElement('div');
+  div.id = '_po_success';
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(31,107,69,.97);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Noto Sans Lao","IBM Plex Sans Thai",sans-serif;padding:32px 24px;text-align:center;opacity:0;transition:opacity .25s ease';
+  document.body.appendChild(div);
+  requestAnimationFrame(()=>{ div.style.opacity='1'; });
+  const render = (status)=>{
+    const stat = {
+      awaiting_verify: {icon:'⏳', title:'ລໍພະນັກງານກວດສະລິບ', sub:'Waiting for staff to verify your slip'},
+      confirmed:        {icon:'✅', title:'ຢືນຢັນແລ້ວ! ກຳລັງກຽມ', sub:'Confirmed — your order is being prepared'},
+      ready:            {icon:'🔔', title:'ພ້ອມຮັບແລ້ວ!', sub:'Ready for pickup!'},
+      completed:        {icon:'🎉', title:'ຮັບອໍເດີ້ແລ້ວ ຂອບໃຈ!', sub:'Picked up — thank you!'},
+      rejected:         {icon:'❌', title:'ອໍເດີ້ບໍ່ຖືກຮັບ', sub:'Order was not accepted — please contact the shop'}
+    }[status] || {icon:'⏳',title:'ລໍພະນັກງານກວດສະລິບ',sub:'Waiting for verification'};
+    div.innerHTML = `
+      <div style="font-size:72px;margin-bottom:12px">${stat.icon}</div>
+      <div style="font-size:24px;font-weight:900;color:#fff;margin-bottom:2px">${stat.title}</div>
+      <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:14px">${stat.sub}</div>
+      <div style="background:rgba(255,255,255,.12);border-radius:16px;padding:14px 20px;margin-bottom:20px;min-width:220px">
+        <div style="font-size:12px;color:rgba(255,255,255,.7)">ນັດຮັບ / Pickup</div>
+        <div style="font-size:20px;font-weight:900;color:#fff">${payload.slot}</div>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.75);margin-bottom:22px">ລະຫັດອໍເດີ້ #${orderId.slice(-6)} · ${payload.name}</div>
+      <button onclick="_closePoSuccess()" style="width:100%;max-width:280px;padding:14px;border-radius:14px;border:2px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">ປິດ / Close</button>`;
+  };
+  render(payload.status);
+  if(fbDB){
+    _myPoRef = fbDB.ref(BRANCH_PATH+'preorders/'+orderId);
+    _myPoRef.on('value', snap=>{ const d=snap.val(); if(d) render(d.status); });
+  }
+  window._closePoSuccess = ()=>{
+    if(_myPoRef){ _myPoRef.off(); _myPoRef=null; }
+    div.style.opacity='0';
+    setTimeout(()=>div.remove(),250);
+  };
+}
+
+// ─ Customer entry point: ?preorder=1 in URL (separate QR from ?table=) ─
+function enterPreorderCustomer(){
+  S.custMode = 'preorder';
+  S.custTable = null; S.custCart = {};
+  S.poSlot=''; S.poName=''; S.poPhone=''; S.poSlipData=null;
+  document.getElementById('page-login').style.display='none';
+  document.getElementById('app-shell').style.display='none';
+  const cp=document.getElementById('page-customer'); cp.style.display='block';
+  document.getElementById('cust-tbl-lbl').textContent = `🕒 ສັ່ງລ່ວງໜ້າ · ${STORE_INFO.name||'Greenhouse'}`;
+  // "ເອີ້ນພະນັກງານ" ແລະ "ບິນຂອງທ່ານ" ບໍ່ກ່ຽວຂ້ອງກັບໂໝດນັດຮັບ — ເຊື່ອງໄວ້
+  const billBtn = document.getElementById('cust-bill-btn'); if(billBtn) billBtn.style.display='none';
+  const callBtn = document.getElementById('cust-callstaff-btn'); if(callBtn) callBtn.style.display='none';
+  S.custPageOpenedAt = Date.now();
+  renderCustCatTabs();
+  renderCustMenu();
+  _custStartLoadingPoll();
+}
+
+// ─ Firebase: ຟັງ preorders/ real-time (ທັງລູກຄ້າ ແລະ ພະນັກງານໃຊ້ path ດຽວກັນ) ─
+function fbListenPreorders(){
+  if(!fbDB) return;
+  fbDB.ref(BRANCH_PATH+'preorders').on('child_added', snap=>{
+    const ord = snap.val(); if(!ord) return;
+    PREORDERS[snap.key] = ord;
+    if(ord.origin !== SESSION_ID){
+      playOrderBeep();
+      addNotif('order', `🕒 ສັ່ງລ່ວງໜ້າໃໝ່ — ${ord.name||''}`, `ນັດຮັບ ${ord.slot||''} · ${fmt(ord.total||0)}`, null);
+      const itemsText = (ord.items||[]).map(i=>`${i.name}${i.variantName?' ('+i.variantName+')':''} x${i.qty}`).join('\n');
+      showStaffAlert('order', `🕒 ${ord.name||'ສັ່ງລ່ວງໜ້າ'} · ນັດ ${ord.slot||''}`, itemsText);
+    }
+    if(S.user && S.view==='preorders') renderPreorders();
+  });
+  fbDB.ref(BRANCH_PATH+'preorders').on('child_changed', snap=>{
+    const ord = snap.val(); if(!ord) return;
+    PREORDERS[snap.key] = ord;
+    if(S.user && S.view==='preorders') renderPreorders();
+  });
+  fbDB.ref(BRANCH_PATH+'preorders').on('child_removed', snap=>{
+    delete PREORDERS[snap.key];
+    if(S.user && S.view==='preorders') renderPreorders();
+  });
+}
+
+// ─ Staff view: list, filter, verify/reject/ready/complete ─
+function setPreorderFilter(f, el){
+  poFilter = f;
+  document.querySelectorAll('#po-filter-tabs .btn').forEach(b=>{ b.classList.remove('btn-primary'); b.classList.add('btn-ghost'); });
+  if(el){ el.classList.remove('btn-ghost'); el.classList.add('btn-primary'); }
+  renderPreorders();
+}
+
+function renderPreorders(){
+  const listEl = document.getElementById('preorder-list');
+  if(!listEl) return;
+  let list = Object.entries(PREORDERS).map(([id,o])=>({...o, _id:id}));
+  if(poFilter!=='all') list = list.filter(o=>o.status===poFilter);
+  list.sort((a,b)=>{
+    if(a.status==='awaiting_verify' && b.status!=='awaiting_verify') return -1;
+    if(b.status==='awaiting_verify' && a.status!=='awaiting_verify') return 1;
+    return (a.slot||'').localeCompare(b.slot||'') || (a.ts||0)-(b.ts||0);
+  });
+  if(!list.length){
+    listEl.innerHTML = `<div class="card" style="text-align:center;padding:40px;color:var(--t3)">ບໍ່ມີອໍເດີ້ລ່ວງໜ້າ</div>`;
+    return;
+  }
+  const STAT = {
+    awaiting_verify:{lbl:'🟡 ລໍກວດສະລິບ', bg:'#FEF3C7', color:'#92400E'},
+    confirmed:      {lbl:'🟢 ຢືນຢັນແລ້ວ', bg:'#DCFCE7', color:'#166534'},
+    ready:          {lbl:'🔵 ພ້ອມຮັບ',    bg:'#DBEAFE', color:'#1E40AF'},
+    completed:      {lbl:'✅ ຮັບແລ້ວ',    bg:'#EDE9FE', color:'#5B21B6'},
+    rejected:       {lbl:'❌ ປະຕິເສດ',    bg:'#FEE2E2', color:'#991B1B'}
+  };
+  const nowHM = new Date().toTimeString().slice(0,5);
+  listEl.innerHTML = list.map(o=>{
+    const st = STAT[o.status] || STAT.awaiting_verify;
+    const itemsTxt = (o.items||[]).map(i=>`${i.name}${i.variantName?' ('+i.variantName+')':''} × ${i.qty}`).join(', ');
+    const overdue = (o.status==='confirmed'||o.status==='awaiting_verify') && o.slot && o.slot < nowHM;
+    let actions = '';
+    if(o.status==='awaiting_verify') actions = `
+      <button class="btn btn-primary btn-sm" onclick="confirmPreorder('${o._id}')">✅ ຢືນຢັນ (ສະລິບຖືກຕ້ອງ)</button>
+      <button class="btn btn-danger btn-sm" onclick="rejectPreorder('${o._id}')">❌ ປະຕິເສດ</button>`;
+    else if(o.status==='confirmed') actions = `<button class="btn btn-primary btn-sm" onclick="markPreorderReady('${o._id}')">🔔 ພ້ອມຮັບແລ້ວ</button>`;
+    else if(o.status==='ready') actions = `<button class="btn btn-primary btn-sm" onclick="markPreorderCompleted('${o._id}')">✅ ລູກຄ້າຮັບແລ້ວ</button>`;
+    return `<div class="card" style="border-left:4px solid ${st.color}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-size:16px;font-weight:900;color:var(--t1)">🕒 ນັດຮັບ ${o.slot||'—'}</span>
+            <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:${st.bg};color:${st.color}">${st.lbl}</span>
+            ${overdue?'<span style="font-size:11px;font-weight:700;color:#DC2626">⚠️ ເລີຍເວລານັດ</span>':''}
+          </div>
+          <div style="font-size:13px;color:var(--t2)">👤 ${o.name||'—'} · 📞 ${o.phone||'—'}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:4px;max-width:480px">${itemsTxt}</div>
+          ${o.remark?`<div style="font-size:12px;color:var(--t3);margin-top:2px">📝 ${o.remark}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:900;color:var(--brand)">${fmt(o.total||o.sub||0)}</div>
+          ${o.slipImg?`<img src="${o.slipImg}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid var(--bdr)" onclick="openSlipView('${o._id}')">`:'<div style="font-size:11px;color:var(--t3);margin-top:6px">ບໍ່ມີສະລິບ</div>'}
+        </div>
+      </div>
+      ${actions?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${actions}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openSlipView(id){
+  const o = PREORDERS[id]; if(!o||!o.slipImg) return;
+  document.getElementById('slip-view-img').src = o.slipImg;
+  openModal('modal-slip-view');
+}
+function confirmPreorder(id){
+  if(!fbDB) return;
+  fbDB.ref(BRANCH_PATH+'preorders/'+id).update({status:'confirmed'})
+    .then(()=>toast('✅ ຢືນຢັນອໍເດີ້ແລ້ວ','success')).catch(()=>toast('ຜິດພາດ','error'));
+}
+function rejectPreorder(id){
+  if(!confirm('ຢືນຢັນປະຕິເສດອໍເດີ້ນີ້? (ຄວນໂທຫາລູກຄ້າແຈ້ງເຫດຜົນ)')) return;
+  if(!fbDB) return;
+  fbDB.ref(BRANCH_PATH+'preorders/'+id).update({status:'rejected'})
+    .then(()=>toast('ປະຕິເສດອໍເດີ້ແລ້ວ','info')).catch(()=>toast('ຜິດພາດ','error'));
+}
+function markPreorderReady(id){
+  if(!fbDB) return;
+  fbDB.ref(BRANCH_PATH+'preorders/'+id).update({status:'ready'})
+    .then(()=>toast('🔔 ໝາຍພ້ອມຮັບແລ້ວ','success')).catch(()=>toast('ຜິດພາດ','error'));
+}
+function markPreorderCompleted(id){
+  if(!fbDB) return;
+  fbDB.ref(BRANCH_PATH+'preorders/'+id).update({status:'completed'})
+    .then(()=>toast('✅ ລູກຄ້າຮັບອໍເດີ້ແລ້ວ','success')).catch(()=>toast('ຜິດພາດ','error'));
+}
+
+// ─ QR ສະເພາະ pre-order (ແຍກຈາກ QR ໂຕະ) ─
+function openPreorderQR(){
+  const url = `${location.origin}${location.pathname}?preorder=1`;
+  const lbl = document.getElementById('preorder-qr-url'); if(lbl) lbl.textContent = url;
+  openModal('modal-preorder-qr');
+  setTimeout(()=>renderRealQR(null, url, 180, 'preorder-qr-svg'), 30);
+}
+
+// ─ Settings: ໄລຍະຫ່າງຊ່ວງເວລາ / lead time ຂັ້ນຕ່ຳ ─
+function renderPreorderConfigSettings(){
+  const i=document.getElementById('po-cfg-interval'), l=document.getElementById('po-cfg-lead');
+  if(i) i.value = PREORDER_CONFIG.slotIntervalMin;
+  if(l) l.value = PREORDER_CONFIG.minLeadMin;
+}
+function savePreorderConfig(){
+  const i=parseInt(document.getElementById('po-cfg-interval')?.value,10);
+  const l=parseInt(document.getElementById('po-cfg-lead')?.value,10);
+  if(i>0) PREORDER_CONFIG.slotIntervalMin=i;
+  if(l>0) PREORDER_CONFIG.minLeadMin=l;
+  if(fbDB) fbSaveStore();
+  toast('✅ ບັນທຶກຄ່າສັ່ງລ່ວງໜ້າແລ້ວ','success');
+}
+
 /* ================================================================
    LOYALTY POINTS SYSTEM
 ================================================================ */
@@ -10089,6 +10506,7 @@ document.addEventListener('click', e => {
 function custConfirmOrder(){
   const items=Object.values(S.custCart);
   if(!items.length)return;
+  if(S.custMode==='preorder'){ custConfirmPreorder(items); return; }
   const remark = document.getElementById('cust-remark')?.value.trim() || '';
 
   // Add to table's custPending queue (waiting for staff to send to kitchen)
@@ -11176,7 +11594,7 @@ const firebaseConfig = {
   appId: "1:731666858286:web:1aa2f4d4bebdcbb3413abf"
 };
 let fbApp=null, fbDB=null;
-const BRANCH_PATH = 'branch3/'; // ⚠️ ແຍກຂໍ້ມູນສາຂາ 3 ອອກຈາກສາຂາອື່ນ (ໃຊ້ Firebase project ດຽວກັນ, ແຍກ path)
+const BRANCH_PATH = 'branch2/'; // ⚠️ ແຍກຂໍ້ມູນສາຂາ 2 ອອກຈາກສາຂາອື່ນ (ໃຊ້ Firebase project ດຽວກັນ, ແຍກ path)
 
 // ── Upload image to Firebase Storage ──
 function fbUploadImage(file, path, onSuccess, onError){
@@ -11232,6 +11650,7 @@ function initFirebase(){
     console.log('🔥 Firebase connected');
     fbLoadAll();        // ໂຫລດຂໍ້ມູນທັງໝົດ
     fbListenOrders();   // ຟັງ QR orders real-time
+    fbListenPreorders();// ຟັງ ສັ່ງລ່ວງໜ້າ (pre-order/pickup) real-time
     fbListenTables();   // ຟັງ table status real-time
     fbListenBills();        // ຟັງ bills real-time (dashboard sync)
     fbListenCustomers();    // ຟັງ customers real-time
@@ -11396,7 +11815,8 @@ function fbSaveStore(){
     name:STORE_INFO.name, phone:STORE_INFO.phone, addr:STORE_INFO.addr,
     open:STORE_INFO.open, close:STORE_INFO.close, msg:STORE_INFO.msg,
     vat: vatEl ? parseFloat(vatEl.value)||0 : 0,
-    bankQR: JSON.parse(JSON.stringify(BANK_QR))
+    bankQR: JSON.parse(JSON.stringify(BANK_QR)),
+    preorderConfig: JSON.parse(JSON.stringify(PREORDER_CONFIG))
   };
   if(STORE_INFO.logoData) d.logoData=STORE_INFO.logoData;
   fbDB.ref(BRANCH_PATH+'store').set(d).catch(e=>console.warn('fbSaveStore:',e));
@@ -11570,6 +11990,10 @@ function fbListenStore(){
     if(d.vat!=null){
       const vatEl=document.getElementById('sys-vat-pct');
       if(vatEl) vatEl.value=d.vat;
+    }
+    if(d.preorderConfig){
+      Object.assign(PREORDER_CONFIG, d.preorderConfig);
+      if(typeof renderPreorderConfigSettings==='function' && document.getElementById('po-cfg-interval')) renderPreorderConfigSettings();
     }
   });
 }
@@ -11971,6 +12395,17 @@ function appInit(){
     }
     // Give Firebase time to init before trying
     setTimeout(()=>_tryEnterCustomer(0), 800);
+  } else if(_urlParams.get('preorder')){
+    // ─ Pre-order (scheduled pickup) QR scan mode — ແຍກ QR ຈາກ ?table=, ບໍ່ຜູກກັບໂຕະ ─
+    document.getElementById('page-login').style.display='none';
+    document.getElementById('page-customer').style.display='block';
+    _hideLoading();
+    function _tryEnterPreorder(attempt){
+      if(CATEGORIES.length > 0 && MENU.length > 0){ enterPreorderCustomer(); return; }
+      if(attempt < 15) setTimeout(()=>_tryEnterPreorder(attempt+1), 400);
+      else enterPreorderCustomer();
+    }
+    setTimeout(()=>_tryEnterPreorder(0), 800);
   }
 
   // Unlock audio on first touch (iOS Safari requirement)
