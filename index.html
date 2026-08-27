@@ -1542,7 +1542,7 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
           </div>
         </div>
 
-        <div id="preorder-list" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div id="preorder-list" style="display:flex;flex-direction:column;gap:6px"></div>
       </section>
 
       <!-- ── MENU MGMT ── -->
@@ -8673,11 +8673,8 @@ function renderPreorders(){
   if(!listEl) return;
   let list = Object.entries(PREORDERS).map(([id,o])=>({...o, _id:id}));
   if(poFilter!=='all') list = list.filter(o=>o.status===poFilter);
-  list.sort((a,b)=>{
-    if(a.status==='awaiting_verify' && b.status!=='awaiting_verify') return -1;
-    if(b.status==='awaiting_verify' && a.status!=='awaiting_verify') return 1;
-    return (a.slot||'').localeCompare(b.slot||'') || (a.ts||0)-(b.ts||0);
-  });
+  // ຮຽງຕາມເວລາສົ່ງອໍເດີ້ — ໃໝ່ສຸດຢູ່ເທິງສຸດ (ຄິວ)
+  list.sort((a,b)=>(b.ts||0)-(a.ts||0));
   if(!list.length){
     listEl.innerHTML = `<div class="card" style="text-align:center;padding:40px;color:var(--t3)">ບໍ່ມີອໍເດີ້ລ່ວງໜ້າ</div>`;
     return;
@@ -8703,28 +8700,26 @@ function renderPreorders(){
     if(o.status==='confirmed'||o.status==='ready'||o.status==='completed'){
       actions += `<button class="btn btn-ghost btn-sm" onclick="printPreorderReceipt('${o._id}')">🖨️ ພິມບິນ</button>`;
     }
-    return `<div class="card" style="border-left:4px solid ${st.color}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-            <span style="font-size:16px;font-weight:900;color:var(--t1)">🕒 ນັດຮັບ ${o.slot||'—'}</span>
-            <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:${st.bg};color:${st.color}">${st.lbl}</span>
-            ${overdue?'<span style="font-size:11px;font-weight:700;color:#DC2626">⚠️ ເລີຍເວລານັດ</span>':''}
-          </div>
-          <div style="font-size:13px;color:var(--t2)">👤 ${o.name||'—'} · 📞 ${o.phone||'—'}</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:4px;max-width:480px">${itemsTxt}</div>
-          ${o.remark?`<div style="font-size:12px;color:var(--t3);margin-top:2px">📝 ${o.remark}</div>`:''}
+    const paymentTag = o.slipImg
+      ? `<img src="${o.slipImg}" style="width:26px;height:26px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--bdr);flex-shrink:0" onclick="openSlipView('${o._id}')">`
+      : (o.payMethod==='cash'
+          ? '<span style="font-size:10px;color:#92400E;font-weight:700;flex-shrink:0">💵 ເງິນສົດ</span>'
+          : '<span style="font-size:10px;color:var(--t3);flex-shrink:0">ບໍ່ມີສະລິບ</span>');
+    return `<div class="card" style="padding:9px 12px;border-left:3px solid ${st.color}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0">
+          <span style="font-size:13px;font-weight:900;color:var(--t1);white-space:nowrap">🕒 ${o.slot||'—'}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:${st.bg};color:${st.color};white-space:nowrap">${st.lbl}</span>
+          ${overdue?'<span style="font-size:10px;font-weight:700;color:#DC2626;white-space:nowrap">⚠️ ເລີຍເວລາ</span>':''}
+          <span style="font-size:12px;color:var(--t2);white-space:nowrap">👤 ${o.name||'—'} · ${o.phone||'—'}</span>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:18px;font-weight:900;color:var(--brand)">${fmt(o.total||o.sub||0)}</div>
-          ${o.slipImg
-            ? `<img src="${o.slipImg}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid var(--bdr)" onclick="openSlipView('${o._id}')">`
-            : (o.payMethod==='cash'
-                ? '<div style="font-size:11px;color:#92400E;margin-top:6px;font-weight:700">💵 ຈ່າຍເງິນສົດ</div>'
-                : '<div style="font-size:11px;color:var(--t3);margin-top:6px">ບໍ່ມີສະລິບ</div>')}
-        </div>
+        <span style="font-size:15px;font-weight:900;color:var(--brand);white-space:nowrap;flex-shrink:0">${fmt(o.total||o.sub||0)}</span>
       </div>
-      ${actions?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${actions}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${itemsTxt}${o.remark?' · 📝 '+o.remark:''}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+        ${paymentTag}
+        ${actions}
+      </div>
     </div>`;
   }).join('');
 }
@@ -8752,8 +8747,53 @@ function markPreorderReady(id){
 }
 function markPreorderCompleted(id){
   if(!fbDB) return;
+  const o = PREORDERS[id];
   fbDB.ref(BRANCH_PATH+'preorders/'+id).update({status:'completed'})
-    .then(()=>toast('✅ ລູກຄ້າຮັບອໍເດີ້ແລ້ວ','success')).catch(()=>toast('ຜິດພາດ','error'));
+    .then(()=>{
+      toast('✅ ລູກຄ້າຮັບອໍເດີ້ແລ້ວ','success');
+      // ⚠️ preorders/ ແມ່ນຄົນລະ path ຈາກ bills/ (ທີ່ Dashboard/ລາຍງານ/EOD ອ່ານຂໍ້ມູນ) —
+      // ຖ້າບໍ່ບັນທຶກເປັນ "ໃບບິນ" ນຳ, ຍອດຂາຍຈາກ pre-order ຈະບໍ່ຂຶ້ນລາຍຮັບຢູ່ໃສເລີຍ.
+      // ບັນທຶກຕອນ "ຮັບແລ້ວ" (ລູກຄ້າມາຮັບ+ຈ່າຍຄົບແລ້ວ) ເພື່ອໃຫ້ນັບເປັນຍອດຂາຍຈິງ.
+      if(o) _recordPreorderAsBill(o, id);
+    }).catch(()=>toast('ຜິດພາດ','error'));
+}
+function _recordPreorderAsBill(o, id){
+  if(BILLS.some(b=>b.preorderId===id)) return; // ກັນບັນທຶກຊ້ຳຖ້າກົດຫຼາຍເທື່ອ
+  const _now=new Date();
+  const _pad=n=>String(n).padStart(2,'0');
+  const billId = `B-${_now.getFullYear()}${_pad(_now.getMonth()+1)}${_pad(_now.getDate())}-${_pad(_now.getHours())}${_pad(_now.getMinutes())}${_pad(_now.getSeconds())}`;
+  const items = (o.items||[]).map(i=>({
+    n: i.variantName ? `${i.name} (${i.variantName})` : i.name,
+    q: i.qty||1, p: i.price||0, mid: i.menuId||i.key||null
+  }));
+  const bill = {
+    id: billId,
+    table: `🕒 ${o.name||'ສັ່ງລ່ວງໜ້າ'}`, tableId: null,
+    items,
+    sub: o.sub||0, vat: o.vat||0, disc: 0, total: o.total||((o.sub||0)+(o.vat||0)),
+    consignTotal: 0,
+    pay: o.payMethod || 'cash',
+    received: o.total||0, change: 0,
+    time: timeNow(),
+    date: new Date().toISOString().slice(0,10),
+    by: S.user?.name || 'ພະນັກງານ',
+    source: 'preorder', preorderId: id
+  };
+  BILLS.unshift(bill);
+  S.billIdCounter = (S.billIdCounter||1)+1;
+  if(fbDB){ fbSaveBill(bill); fbDB.ref(BRANCH_PATH+'meta/billIdCounter').set(S.billIdCounter).catch(e=>{}); }
+  // ── Update MENU.sold count (ຄືກັນກັບໃບບິນໂຕະ) ──
+  if(bill.items && Array.isArray(bill.items)){
+    let soldChanged = false;
+    bill.items.forEach(bi=>{
+      const m = MENU.find(x=> (bi.mid && x.id===bi.mid) || x.name===(bi.n||bi.name));
+      if(m){ m.sold = (m.sold||0) + (bi.q||bi.qty||1); soldChanged=true; }
+    });
+    if(soldChanged && fbDB) fbSaveMenu();
+  }
+  // ── ຫັກສາງອັດຕະໂນມັດ + Sync Google Sheet (ຄືກັນກັບໃບບິນໂຕະ) ──
+  if(typeof deductStockForBill==='function') deductStockForBill(bill);
+  if(typeof syncToGAS==='function') syncToGAS('bill', bill);
 }
 
 // ─ QR ສະເພາະ pre-order (ແຍກຈາກ QR ໂຕະ) ─
