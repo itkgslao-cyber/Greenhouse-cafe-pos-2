@@ -2712,7 +2712,10 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
       <div style="margin-top:12px;font-size:12px;font-weight:600;color:var(--t3);background:var(--panel-bg2);padding:5px 14px;border-radius:var(--r-full);border:1px solid var(--bdr);word-break:break-all;text-align:center" id="preorder-qr-url"></div>
     </div>
     <div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:14px">📌 ພິມ ຫຼື ບັນທຶກຮູບນີ້ ໄປຕິດໄວ້ນອກຮ້ານ / ໃນໂຮງຮຽນ</div>
-    <button class="btn btn-ghost w-full" onclick="closeModal('modal-preorder-qr')">ປິດ</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="printPreorderQR()">🖨️ ພິມປ້າຍ QR</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modal-preorder-qr')">ປິດ</button>
+    </div>
   </div>
 </div>
 
@@ -8432,8 +8435,18 @@ function renderPreorderExtra(){
     if(btnEl)  btnEl.textContent = '✅ ຢືນຢັນ Order / Confirm';
     return;
   }
-  if(noteEl) noteEl.innerHTML = '⚠️ ອໍເດີ້ຈະຖືກຮັບ ກໍ່ຕໍ່ເມື່ອທ່ານອັບໂຫລດສະລິບ ແລະ ພະນັກງານກວດສອບແລ້ວ<br>Your order is accepted only after uploading the slip and staff verification';
-  if(btnEl)  btnEl.textContent = '📤 ອັບໂຫລດສະລິບ & ສົ່ງ Order';
+  const selMethod = S.poPayMethod || '';
+  const isCashSel  = selMethod === 'cash';
+  if(!selMethod){
+    if(noteEl) noteEl.innerHTML = '⚠️ ກະລຸນາເລືອກຊ່ອງທາງຊຳລະກ່ອນ<br>Please select a payment method first';
+    if(btnEl)  btnEl.textContent = '✅ ຢືນຢັນ / ສົ່ງ Order';
+  } else if(isCashSel){
+    if(noteEl) noteEl.innerHTML = '✅ ຈ່າຍເງິນສົດທີ່ຮ້ານ ຕອນມາຮັບ Order — ອໍເດີ້ຈະຖືກສົ່ງທັນທີ<br>Pay cash at the shop on pickup — order will be submitted right away';
+    if(btnEl)  btnEl.textContent = '✅ ຢືນຢັນ & ສົ່ງ Order (ຈ່າຍເງິນສົດ)';
+  } else {
+    if(noteEl) noteEl.innerHTML = '⚠️ ອໍເດີ້ຈະຖືກຮັບ ກໍ່ຕໍ່ເມື່ອທ່ານອັບໂຫລດສະລິບ ແລະ ພະນັກງານກວດສອບແລ້ວ<br>Your order is accepted only after uploading the slip and staff verification';
+    if(btnEl)  btnEl.textContent = '📤 ອັບໂຫລດສະລິບ & ສົ່ງ Order';
+  }
 
   const slots = generateTimeSlots();
   if(!S.poSlot || !slots.includes(S.poSlot)) S.poSlot = slots[0] || '';
@@ -8445,15 +8458,39 @@ function renderPreorderExtra(){
 
   const bankEntries = Object.entries(BANK_QR);
   const bankHtml = bankEntries.length
-    ? bankEntries.map(([key,b])=>`
-        <div style="display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;background:#fff;border:1px solid #E5E7EB;margin-bottom:8px">
-          ${b.img?`<img src="${b.img}" style="width:52px;height:52px;object-fit:contain;border-radius:8px;border:1px solid #E5E7EB;flex-shrink:0">`:`<div style="width:52px;height:52px;border-radius:8px;background:${b.color||'#374151'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${b.icon||'🏦'}</div>`}
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:800;color:#1C1917">${b.name||key}</div>
-            <div style="font-size:12px;color:#6B7280">${b.account?b.account:'⚠️ ຍັງບໍ່ໄດ້ຕັ້ງເລກບັນຊີ'}${b.holder?' · '+b.holder:''}</div>
+    ? bankEntries.map(([key,b])=>{
+        const sel = selMethod===key;
+        const hasQR = !!b.img;
+        return `
+        <div style="border-radius:10px;background:#fff;border:2px solid ${sel?'var(--brand)':'#E5E7EB'};margin-bottom:8px;overflow:hidden;cursor:pointer" onclick="selectPreorderPayMethod('${key}')">
+          <div style="display:flex;gap:10px;align-items:center;padding:8px">
+            ${b.img?`<img src="${b.img}" style="width:48px;height:48px;object-fit:contain;border-radius:8px;border:1px solid #E5E7EB;flex-shrink:0">`:`<div style="width:48px;height:48px;border-radius:8px;background:${b.color||'#374151'};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${b.icon||'🏦'}</div>`}
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:800;color:#1C1917">${b.name||key}</div>
+              <div style="font-size:12px;color:#6B7280">${b.account?b.account:'⚠️ ຍັງບໍ່ໄດ້ຕັ້ງເລກບັນຊີ'}${b.holder?' · '+b.holder:''}</div>
+            </div>
+            <div style="font-size:18px;color:${sel?'var(--brand)':'#D1D5DB'};flex-shrink:0">${sel?'✅':'○'}</div>
           </div>
-        </div>`).join('')
+          ${sel && hasQR ? `<div style="padding:0 14px 14px;text-align:center;border-top:1px dashed #E5E7EB;padding-top:12px">
+              <img src="${b.img}" style="width:200px;max-width:100%;height:200px;object-fit:contain;background:#fff;border-radius:10px;border:1px solid #E5E7EB">
+              <div style="font-size:12px;color:#6B7280;margin-top:6px">📷 ສະແກນ QR ນີ້ເພື່ອໂອນເງິນ / Scan this QR to pay</div>
+            </div>` : ''}
+          ${sel && !hasQR ? `<div style="padding:0 14px 14px;font-size:12px;color:#DC2626">⚠️ [ຕ້ອງຢືນຢັນ] ຍັງບໍ່ໄດ້ອັບໂຫລດຮູບ QR ສຳລັບຊ່ອງທາງນີ້ — ໄປຕັ້ງຄ່າໃນ Settings ▸ ຊ່ອງທາງຊຳລະ</div>` : ''}
+        </div>`;
+      }).join('')
     : `<div style="font-size:12px;color:#DC2626">⚠️ [ຕ້ອງຢືນຢັນ] ຮ້ານຍັງບໍ່ທັນຕັ້ງຄ່າຊ່ອງທາງທະນາຄານ — ໄປຕັ້ງຄ່າໃນ Settings ▸ ຊ່ອງທາງຊຳລະ ກ່ອນ</div>`;
+
+  const cashHtml = `
+    <div style="border-radius:10px;background:#fff;border:2px solid ${isCashSel?'var(--brand)':'#E5E7EB'};margin-bottom:8px;padding:8px;display:flex;gap:10px;align-items:center;cursor:pointer" onclick="selectPreorderPayMethod('cash')">
+      <div style="width:48px;height:48px;border-radius:8px;background:#F59E0B;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💵</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;color:#1C1917">ເງິນສົດ / Cash</div>
+        <div style="font-size:12px;color:#6B7280">ຈ່າຍທີ່ຮ້ານຕອນມາຮັບ — ບໍ່ຕ້ອງໂອນລ່ວງໜ້າ</div>
+      </div>
+      <div style="font-size:18px;color:${isCashSel?'var(--brand)':'#D1D5DB'};flex-shrink:0">${isCashSel?'✅':'○'}</div>
+    </div>`;
+
+  const showSlipZone = selMethod && !isCashSel;
 
   wrap.innerHTML = `
     <div style="margin:14px 0 10px">
@@ -8471,8 +8508,10 @@ function renderPreorderExtra(){
       </div>
     </div>
     <div style="background:#F9FAFB;border-radius:12px;padding:12px;margin-bottom:6px">
-      <div style="font-size:12px;font-weight:700;color:#6B7280;margin-bottom:8px">💳 ໂອນເງິນຈ່າຍລ່ວງໜ້າ (ບັງຄັບ) — Pay by bank transfer, required</div>
+      <div style="font-size:12px;font-weight:700;color:#6B7280;margin-bottom:8px">💳 ເລືອກຊ່ອງທາງຊຳລະ — Choose payment method</div>
       ${bankHtml}
+      ${cashHtml}
+      ${showSlipZone ? `
       <div class="img-upload-zone ${S.poSlipData?'has-img':''}" id="po-slip-zone" style="height:140px;margin-top:6px" onclick="document.getElementById('po-slip-file').click()">
         <img id="po-slip-preview" src="${S.poSlipData||''}" style="display:${S.poSlipData?'block':'none'}">
         <div id="po-slip-placeholder" style="display:${S.poSlipData?'none':'flex'};flex-direction:column;align-items:center">
@@ -8481,8 +8520,14 @@ function renderPreorderExtra(){
         </div>
         <div class="img-overlay" style="font-size:16px">✏️</div>
         <input type="file" accept="image/*" id="po-slip-file" style="display:none" onchange="handleSlipUpload(this)">
-      </div>
+      </div>` : ''}
     </div>`;
+}
+
+function selectPreorderPayMethod(key){
+  S.poPayMethod = (S.poPayMethod === key) ? null : key; // tap again to deselect
+  if(S.poPayMethod === 'cash') S.poSlipData = null; // cash pays at pickup, no slip needed
+  renderPreorderExtra();
 }
 
 function handleSlipUpload(input){
@@ -8503,25 +8548,31 @@ function custConfirmPreorder(items){
   const name  = (document.getElementById('po-name')?.value  || S.poName  || '').trim();
   const phone = (document.getElementById('po-phone')?.value || S.poPhone || '').trim();
   if(!name || !phone){ toast('ກະລຸນາໃສ່ຊື່ ແລະ ເບີໂທ','error'); return; }
-  if(!S.poSlipData){ toast('ກະລຸນາອັບໂຫລດຮູບສະລິບໂອນເງິນກ່ອນ ຈຶ່ງສົ່ງ Order ໄດ້','error'); return; }
+  if(!S.poPayMethod){ toast('ກະລຸນາເລືອກຊ່ອງທາງຊຳລະ','error'); return; }
+  const isCash = S.poPayMethod === 'cash';
+  if(!isCash && !S.poSlipData){ toast('ກະລຸນາອັບໂຫລດຮູບສະລິບໂອນເງິນກ່ອນ ຈຶ່ງສົ່ງ Order ໄດ້','error'); return; }
   if(!fbDB){ toast('ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບ — ລອງໃໝ່','error'); return; }
 
   const remark = document.getElementById('cust-remark')?.value.trim() || '';
   const sub = items.reduce((a,i)=>a+i.price*i.qty,0);
   const vat = Math.round(sub*getVatRate());
   const orderId = 'po_'+Date.now();
+  const payMethodLabel = isCash ? 'ເງິນສົດ (ຈ່າຍທີ່ຮ້ານ)' : (BANK_QR[S.poPayMethod]?.name || S.poPayMethod);
   const payload = {
     orderId, items, name, phone, slot:S.poSlot, remark,
     sub, vat, total: sub+vat,
-    slipImg: S.poSlipData,
-    status: 'awaiting_verify',
+    payMethod: S.poPayMethod, payMethodLabel,
+    slipImg: isCash ? null : S.poSlipData,
+    // ⚠️ ເງິນສົດ = ບໍ່ມີສະລິບໃຫ້ກວດ → ຂ້າມຂັ້ນຕອນລໍພະນັກງານກວດ ແລ້ວຖືວ່າ "ຢືນຢັນແລ້ວ" ທັນທີ
+    // (ໝາຍເຫດ: ອໍເດີ້ເງິນສົດຈະບໍ່ມີການປ້ອງກັນ no-show ຄືກັບໂອນເງິນ, ເພາະບໍ່ໄດ້ຈ່າຍລ່ວງໜ້າ)
+    status: isCash ? 'confirmed' : 'awaiting_verify',
     time: new Date().toLocaleTimeString('lo-LA'),
     ts: Date.now(), origin: SESSION_ID
   };
   fbDB.ref(BRANCH_PATH+'preorders/'+orderId).set(payload)
     .then(()=>{
       closeModal('modal-cart');
-      S.custCart = {}; S.poSlipData=null; S.poSlot=''; S.poName=name; S.poPhone=phone;
+      S.custCart = {}; S.poSlipData=null; S.poSlot=''; S.poPayMethod=null; S.poName=name; S.poPhone=phone;
       updateCartBar(); renderCustMenu();
       _showPreorderSuccess(orderId, payload);
     })
@@ -8570,7 +8621,7 @@ function _showPreorderSuccess(orderId, payload){
 function enterPreorderCustomer(){
   S.custMode = 'preorder';
   S.custTable = null; S.custCart = {};
-  S.poSlot=''; S.poName=''; S.poPhone=''; S.poSlipData=null;
+  S.poSlot=''; S.poName=''; S.poPhone=''; S.poSlipData=null; S.poPayMethod=null;
   document.getElementById('page-login').style.display='none';
   document.getElementById('app-shell').style.display='none';
   const cp=document.getElementById('page-customer'); cp.style.display='block';
@@ -8666,7 +8717,11 @@ function renderPreorders(){
         </div>
         <div style="text-align:right">
           <div style="font-size:18px;font-weight:900;color:var(--brand)">${fmt(o.total||o.sub||0)}</div>
-          ${o.slipImg?`<img src="${o.slipImg}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid var(--bdr)" onclick="openSlipView('${o._id}')">`:'<div style="font-size:11px;color:var(--t3);margin-top:6px">ບໍ່ມີສະລິບ</div>'}
+          ${o.slipImg
+            ? `<img src="${o.slipImg}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer;border:1px solid var(--bdr)" onclick="openSlipView('${o._id}')">`
+            : (o.payMethod==='cash'
+                ? '<div style="font-size:11px;color:#92400E;margin-top:6px;font-weight:700">💵 ຈ່າຍເງິນສົດ</div>'
+                : '<div style="font-size:11px;color:var(--t3);margin-top:6px">ບໍ່ມີສະລິບ</div>')}
         </div>
       </div>
       ${actions?`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${actions}</div>`:''}
@@ -8707,6 +8762,63 @@ function openPreorderQR(){
   const lbl = document.getElementById('preorder-qr-url'); if(lbl) lbl.textContent = url;
   openModal('modal-preorder-qr');
   setTimeout(()=>renderRealQR(null, url, 180, 'preorder-qr-svg'), 30);
+}
+
+// ─ ພິມປ້າຍ QR ສັ່ງລ່ວງໜ້າ (ໃບໃຫຍ່ ສຳລັບຕິດໜ້າຮ້ານ/ໂຮງຮຽນ — ແຍກຈາກໃບບິນ) ─
+function buildPreorderQRPosterHTML(url){
+  const logoHtml = STORE_INFO.logoData
+    ? `<img src="${STORE_INFO.logoData}" style="width:110px;height:110px;object-fit:contain;margin:0 auto 12px;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;">`
+    : '';
+  return `<div style="background:#fff;color:#000;padding:36px 26px;font-family:Arial,sans-serif;width:100%;box-sizing:border-box;text-align:center">
+    ${logoHtml}
+    <div style="font-size:22px;font-weight:900;line-height:1.3">${STORE_INFO.name||''}</div>
+    ${STORE_INFO.addr?`<div style="font-size:13px;color:#444;margin-top:4px">${STORE_INFO.addr}</div>`:''}
+    <div style="font-size:24px;font-weight:900;margin-top:26px">📱 ສະແກນ QR ເພື່ອສັ່ງລ່ວງໜ້າ</div>
+    <div style="font-size:14px;color:#444;margin-top:4px">Scan the QR code to pre-order &amp; choose your pickup time</div>
+    <div style="margin:26px auto 14px;width:260px;height:260px;background:#fff;border:2px solid #000;border-radius:18px;display:flex;align-items:center;justify-content:center;padding:14px">
+      <div id="_po_poster_qr_wrap" style="display:flex;align-items:center;justify-content:center;min-width:220px;min-height:220px"></div>
+    </div>
+    <div style="font-size:12px;color:#555;word-break:break-all;margin-bottom:28px">${url}</div>
+    <div style="text-align:left;max-width:340px;margin:0 auto;font-size:14px;font-weight:700;line-height:2.1;background:#F9FAFB;border-radius:12px;padding:16px 20px;border:1px solid #E5E7EB">
+      1️⃣ ສະແກນ QR ດ້ານເທິງ<br>
+      2️⃣ ເລືອກລາຍການ ແລະ ເວລານັດຮັບ<br>
+      3️⃣ ຊຳລະ (ໂອນເງິນ ຫຼື ເງິນສົດ)<br>
+      4️⃣ ມາຮັບຕາມເວລານັດ 🕒
+    </div>
+  </div>`;
+}
+function printPreorderQR(){
+  const url = document.getElementById('preorder-qr-url')?.textContent
+    || `${location.origin}${location.pathname}?preorder=1`;
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = buildPreorderQRPosterHTML(url);
+  pa.style.display = 'block';
+  setTimeout(()=>renderRealQR(null, url, 220, '_po_poster_qr_wrap'), 50);
+  const _doPrint = ()=>{ window.print(); pa.style.display='none'; };
+  if(STORE_INFO.logoData){
+    const cvs = document.createElement('canvas');
+    const img = new Image();
+    img.onload = ()=>{
+      cvs.width=img.width; cvs.height=img.height;
+      const ctx=cvs.getContext('2d'); ctx.drawImage(img,0,0);
+      const d=ctx.getImageData(0,0,cvs.width,cvs.height);
+      for(let i=0;i<d.data.length;i+=4){
+        const gray=Math.round(0.299*d.data[i]+0.587*d.data[i+1]+0.114*d.data[i+2]);
+        const bw = gray<128?0:255;
+        d.data[i]=d.data[i+1]=d.data[i+2]=bw;
+      }
+      ctx.putImageData(d,0,0);
+      const bwDataUrl = cvs.toDataURL('image/png');
+      pa.querySelectorAll('img').forEach(el=>{
+        if(el.src && el.src.startsWith('data:image') && el.src===STORE_INFO.logoData) el.src=bwDataUrl;
+      });
+      setTimeout(_doPrint,250);
+    };
+    img.onerror = ()=>setTimeout(_doPrint,250);
+    img.src = STORE_INFO.logoData;
+  } else {
+    setTimeout(_doPrint,250);
+  }
 }
 
 // ─ ພິມໃບບິນ/ໃບຮັບອໍເດີ້ ສຳລັບ pre-order (ແຍກຮູບແບບຈາກໃບບິນໂຕະ ເພາະບໍ່ມີ "ໂຕະ" ມີແຕ່ນັດຮັບ+ຊື່ລູກຄ້າ) ─
@@ -8753,7 +8865,7 @@ function buildPreorderReceiptHTML(o){
       ${o.vat>0?`<div style="display:flex;justify-content:space-between;font-size:${fBase};padding:${pad};"><span>${vatLabel()}</span><span>${fmt(o.vat)}</span></div>`:''}
       ${DASH}
       <div style="display:flex;justify-content:space-between;font-size:${fLg};font-weight:900;padding:${pad};"><span>ຍອດລວມສຸດທິ</span><span>${fmt(o.total||o.sub||0)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:${fBase};padding:${pad};"><span>ຊຳລະ</span><span>ໂອນທະນາຄານ (ໂອນແລ້ວ)</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:${fBase};padding:${pad};"><span>ຊຳລະ</span><span>${o.payMethodLabel || (o.payMethod==='cash' ? 'ເງິນສົດ (ຈ່າຍທີ່ຮ້ານ)' : 'ໂອນທະນາຄານ (ໂອນແລ້ວ)')}</span></div>
     </div>
     ${DASH}
     <div style="text-align:center;padding:6px 0;font-size:${fBase};font-weight:700;line-height:1.8;">
@@ -12441,7 +12553,12 @@ function appInit(){
   setTimeout(()=>{
     _hideLoading();
     // Only force power-on screen visible if NOT in customer QR scan mode
-    const _isQRMode = new URLSearchParams(window.location.search).get('table');
+    // (must check BOTH ?table= for dine-in QR and ?preorder= for pre-order QR —
+    // missing ?preorder= here was the bug: after 2s this would force-show the
+    // staff login/power-on screen even though the pre-order customer page was
+    // already displayed, making customers see the login screen first.)
+    const _qp = new URLSearchParams(window.location.search);
+    const _isQRMode = _qp.get('table') || _qp.get('preorder');
     if(!_isQRMode){
       const powerPage = document.getElementById('page-poweron');
       if(powerPage) powerPage.style.display = 'flex';
