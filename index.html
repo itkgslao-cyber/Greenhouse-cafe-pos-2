@@ -4320,11 +4320,12 @@ function _commitDiscount(v, dtype, reason, approver){
 }
 
 /* ── ໂມດັນອະນຸມັດ Admin/Manager (ໃຊ້ຮ່ວມກັນລະຫວ່າງສ່ວນຫຼຸດ/ໃຫ້ຟຣີ) ── */
-let _pinApprovalAction = null; // 'discount' | 'free'
+let _pinApprovalAction = null; // 'discount' | 'free' | 'customPrice'
 let _pendingDiscount = null;
 let _pendingFree = null;
+let _pendingCustomPrice = null;
 function cancelPinApproval(){
-  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null;
+  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null; _pendingCustomPrice=null;
   closeModal('modal-pin-approval');
 }
 function confirmPinApproval(){
@@ -4339,8 +4340,11 @@ function confirmPinApproval(){
   } else if(_pinApprovalAction==='free' && _pendingFree){
     const {key, qty, reason} = _pendingFree;
     _commitFree(key, qty, reason, approver.name);
+  } else if(_pinApprovalAction==='customPrice' && _pendingCustomPrice){
+    const {key, newPrice, oldPrice, reason} = _pendingCustomPrice;
+    _commitCustomPrice(key, newPrice, oldPrice, reason, approver.name);
   }
-  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null;
+  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null; _pendingCustomPrice=null;
 }
 
 /* CHECKOUT */
@@ -5581,6 +5585,42 @@ function _commitFree(key, n, reason, approver, promoId){
   toast(`✅ ໃຫ້ຟຣີ ${it.name} x${n} ແລ້ວ`,'success');
 }
 
+/* ── ພະນັກງານໃສ່ລາຄາຂາຍໃໝ່ເອງຕໍ່ລາຍການ (ຕ້ອງມີເຫດຜົນ + Admin/Manager ອະນຸມັດ ຖ້າບໍ່ແມ່ນ Admin/Manager ເອງ) ── */
+function tomSetCustomPrice(key){
+  const it = tomCart[key];
+  if(!it) return;
+  const val = prompt(`ລາຄາຂາຍໃໝ່ຂອງ "${it.name}" (₭) — ລາຄາປັດຈຸບັນ: ${fmt(it.price)}`, it.price);
+  if(val === null) return;
+  const newPrice = Math.max(0, parseInt(val.toString().replace(/[^0-9]/g,''))||0);
+  const oldPrice = it.origPrice!=null ? it.origPrice : it.price;
+  if(newPrice === it.price){ return; }
+  const reason = prompt(`ເຫດຜົນທີ່ປ່ຽນລາຄາ (ບັງຄັບ):`, '');
+  if(!reason || !reason.trim()){ toast('ຕ້ອງໃສ່ເຫດຜົນ — ຍົກເລີກການປ່ຽນລາຄາ','error'); return; }
+  const isMgmt = S.role==='admin' || S.role==='manager';
+  if(isMgmt){
+    _commitCustomPrice(key, newPrice, oldPrice, reason.trim(), '');
+    return;
+  }
+  // ບໍ່ແມ່ນ Admin/Manager — ຕ້ອງມີລະຫັດອະນຸມັດທຸກຄັ້ງ
+  _pendingCustomPrice = {key, newPrice, oldPrice, reason: reason.trim()};
+  document.getElementById('pin-approval-title').textContent='🔒 ຢືນຢັນການປ່ຽນລາຄາ';
+  document.getElementById('pin-approval-detail').textContent = `${it.name}: ${fmt(oldPrice)} → ${fmt(newPrice)} — ເຫດຜົນ: ${reason.trim()}`;
+  document.getElementById('pin-user').value='';
+  document.getElementById('pin-pass').value='';
+  _pinApprovalAction='customPrice';
+  openModal('modal-pin-approval');
+}
+function _commitCustomPrice(key, newPrice, oldPrice, reason, approver){
+  const it = tomCart[key];
+  if(!it) return;
+  if(it.origPrice==null) it.origPrice = oldPrice;
+  it.price = newPrice;
+  tomRenderCart();
+  tomRenderSummary();
+  logAudit('customPrice', `${it.name}: ${fmt(oldPrice)} → ${fmt(newPrice)}`, reason, approver||'', {oldPrice, newPrice});
+  toast(`✅ ປ່ຽນລາຄາ ${it.name} ເປັນ ${fmt(newPrice)} ແລ້ວ`,'success');
+}
+
 /* ── ດື່ມຢູ່ຮ້ານ (ບໍ່ຕັດຈອກ): ສະເພາະລາຍການທີ່ຕິດຕາມສາງແບບ 'ຈອກ' ('cup') ── */
 function tomItemUsesCup(key){
   const menuIdPart = String(key).includes('_') ? String(key).split('_')[0] : String(key);
@@ -5621,10 +5661,11 @@ function tomRenderCart(){
           <span style="font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.name}</span>
           ${fromCust ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;background:var(--brand-bg2);color:var(--brand-d);flex-shrink:0;white-space:nowrap">📱 ລູກຄ້າ</span>` : ''}
         </div>
-        <div style="font-size:11px;color:var(--brand)">${fmt(it.price)}</div>
+        <div style="font-size:11px;color:var(--brand)">${it.origPrice!=null ? `<span style="text-decoration:line-through;color:var(--t3);margin-right:4px">${fmt(it.origPrice)}</span>` : ''}${fmt(it.price)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:1px;flex-wrap:wrap">
           <span style="font-size:10px;color:var(--brand-d);cursor:pointer" onclick="tomAddNote('${it.key}')">${it.note ? '📝 '+it.note : '+ ໝາຍເຫດ'}</span>
           <span style="font-size:10px;cursor:pointer;font-weight:700;color:${free>0?'#DC2626':'var(--t3)'}" onclick="tomSetFree('${it.key}')" title="ກຳນົດຈຳນວນທີ່ໃຫ້ຟຣີ (ໂປຣໂມຊັ່ນ)">${free>0?`🎁 ຟຣີ x${free}`:'🎁 ໃຫ້ຟຣີ'}</span>
+          <span style="font-size:10px;cursor:pointer;font-weight:700;color:${it.origPrice!=null?'#B8892B':'var(--t3)'}" onclick="tomSetCustomPrice('${it.key}')" title="ໃສ່ລາຄາຂາຍໃໝ່ສະເພາະລາຍການນີ້ (ຕ້ອງມີເຫດຜົນ+ອະນຸມັດ)">💲 ${it.origPrice!=null?'ລາຄາໃໝ່':'ປ່ຽນລາຄາ'}</span>
           ${usesCup ? `<span style="font-size:10px;cursor:pointer;font-weight:700;color:${dineIn?'var(--c-green-t)':'var(--t3)'}" onclick="tomToggleDineIn('${it.key}')" title="ຖ້າດື່ມຢູ່ຮ້ານ ຈະບໍ່ຕັດຈອກໃນສາງ">${dineIn?'🍽️ ດື່ມຢູ່ຮ້ານ (ບໍ່ຕັດຈອກ)':'🥤 ຫິ້ວກັບ (ຕັດຈອກ)'}</span>` : ''}
         </div>
       </div>
@@ -5734,7 +5775,7 @@ function tomSendOrder(){
   const t = TABLES.find(x => x.id === tomTableId);
   if(!t) return;
   items.forEach(it => {
-    const existing = t.orders.find(o => o.key === it.key && o.status === 'pending' && (o.free||0)===(it.free||0) && !!o.dineIn===!!it.dineIn);
+    const existing = t.orders.find(o => o.key === it.key && o.status === 'pending' && (o.free||0)===(it.free||0) && !!o.dineIn===!!it.dineIn && (o.price||0)===(it.price||0));
     if(existing) existing.qty += it.qty;
     else t.orders.push({key:it.key, name:it.name, price:it.price, qty:it.qty, free:it.free||0, dineIn:!!it.dineIn, note:it.note||'', img:it.img||null, status:'pending', time:timeNow()});
   });
@@ -5784,7 +5825,7 @@ function tomCheckout(){
 
   // Merge unsent tomCart into orders
   Object.values(tomCart).forEach(it => {
-    const existing = t.orders.find(o => o.key === it.key && o.status === 'pending' && (o.free||0)===(it.free||0) && !!o.dineIn===!!it.dineIn);
+    const existing = t.orders.find(o => o.key === it.key && o.status === 'pending' && (o.free||0)===(it.free||0) && !!o.dineIn===!!it.dineIn && (o.price||0)===(it.price||0));
     if(existing) existing.qty += it.qty;
     else t.orders.push({key:it.key||String(it.name), name:it.name, price:it.price, qty:it.qty, free:it.free||0, dineIn:!!it.dineIn, note:it.note||'', img:it.img||null, status:'pending', time:timeNow()});
   });
@@ -11926,8 +11967,8 @@ function renderAuditLog(){
   const box = document.getElementById('auditlog-list');
   if(!box) return;
   if(!AUDIT_LOG.length){ box.innerHTML = `<div style="font-size:12px;color:var(--t3);padding:20px;text-align:center">ຍັງບໍ່ມີບັນທຶກ</div>`; return; }
-  const actionLabel = {discount:'🏷️ ສ່ວນຫຼຸດ', free:'🎁 ໃຫ້ຟຣີ', void:'✕ Void'};
-  const actionColor = {discount:'#EAB308', free:'#DC2626', void:'#EF4444'};
+  const actionLabel = {discount:'🏷️ ສ່ວນຫຼຸດ', free:'🎁 ໃຫ້ຟຣີ', void:'✕ Void', customPrice:'💲 ປ່ຽນລາຄາ'};
+  const actionColor = {discount:'#EAB308', free:'#DC2626', void:'#EF4444', customPrice:'#B8892B'};
   box.innerHTML = AUDIT_LOG.map(x=>`
     <div style="background:var(--panel-bg2);border:1px solid var(--bdr);border-radius:10px;padding:12px 14px;margin-bottom:8px;font-size:12px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
