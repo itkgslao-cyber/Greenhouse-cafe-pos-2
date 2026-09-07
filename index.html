@@ -1808,6 +1808,7 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
         </div>
         <div id="promo-perms-panel" style="margin-bottom:16px"></div>
         <div id="promo-form-panel" style="margin-bottom:16px"></div>
+        <div id="promo-yearly-summary" style="margin-bottom:16px"></div>
         <div id="promo-list"></div>
       </section>
 
@@ -3145,6 +3146,8 @@ let AUDIT_LOG = []
 // ── ໂປຣໂມຊັ່ນ: Admin ກຳນົດວັນທີ+ຊື່ລ່ວງໜ້າ, Cashier ເລືອກໃຊ້ໄດ້ໂດຍບໍ່ຕ້ອງພິມເຫດຜົນ/ຂໍອະນຸມັດ ──
 let PROMOTIONS = []; // {id,name,startDate,endDate,note,createdBy,createdAt}
 let PROMO_PERMS = { manager:{view:false,manage:false}, staff:{view:false,manage:false}, cashier:{view:false,manage:false}, accounting:{view:false,manage:false} };
+let _promoYear = new Date().getFullYear();
+let _promoExpanded = new Set();
 // ✅ ໂຕລະບຸ browser/session ນີ້ ໃຊ້ແກ້ bug ຈຳນວນອໍເດີ້ QR ຄູນ 2
 // (ຕົນເອງບໍ່ຄວນປະມວນຜົນ order ຂອງຕົນເອງຄືນຈາກ Firebase ອີກຄັ້ງ ຫຼັງຈາກໄດ້ເພີ່ມ local ໄປແລ້ວ)
 const SESSION_ID = 'sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
@@ -11234,7 +11237,7 @@ const firebaseConfig = {
   appId: "1:731666858286:web:1aa2f4d4bebdcbb3413abf"
 };
 let fbApp=null, fbDB=null;
-const BRANCH_PATH = 'branch3/'; // ⚠️ ແຍກຂໍ້ມູນສາຂາ 3 ອອກຈາກສາຂາອື່ນ (ໃຊ້ Firebase project ດຽວກັນ, ແຍກ path)
+const BRANCH_PATH = 'branch3/'; // ⚠️ ແຍກຂໍ້ມູນສາຂາ 2 ອອກຈາກສາຂາຫຼັກ (ໃຊ້ Firebase project ດຽວກັນ, ແຍກ path)
 
 // ── Upload image to Firebase Storage ──
 function fbUploadImage(file, path, onSuccess, onError){
@@ -11717,6 +11720,62 @@ function promoStatus(p){
   if(today > p.endDate)   return {lbl:'ໝົດອາຍຸແລ້ວ', clr:'#9CA3AF'};
   return {lbl:'🟢 Active', clr:'#16A34A'};
 }
+function promoYearlySummaryData(year){
+  const yr = String(year);
+  const entries = (AUDIT_LOG||[]).filter(x=>x.promoId && x.date && x.date.slice(0,4)===yr);
+  const byPromo = {};
+  entries.forEach(e=>{
+    if(!byPromo[e.promoId]) byPromo[e.promoId] = {qty:0,value:0,count:0};
+    byPromo[e.promoId].qty += (e.qty||0);
+    byPromo[e.promoId].value += (e.value||0);
+    byPromo[e.promoId].count += 1;
+  });
+  const totalQty = entries.reduce((a,e)=>a+(e.qty||0),0);
+  const totalValue = entries.reduce((a,e)=>a+(e.value||0),0);
+  return { entries, byPromo, totalQty, totalValue, totalCount: entries.length };
+}
+function setPromoYear(y){ _promoYear = parseInt(y)||new Date().getFullYear(); renderPromotions(); }
+function exportPromoYearlyCsv(){
+  const sum = promoYearlySummaryData(_promoYear);
+  const rows = [];
+  rows.push([`ສະຫຼຸບລວມທຸກໂປຣໂມຊັ່ນ ປີ ${_promoYear}`]);
+  rows.push([]);
+  rows.push(['ຊື່ໂປຣໂມຊັ່ນ','ຈຳນວນທີ່ໃຫ້ຟຣີ','ຈຳນວນຄັ້ງ','ມູນຄ່າ (₭)']);
+  Object.keys(sum.byPromo).forEach(pid=>{
+    const p = PROMOTIONS.find(x=>String(x.id)===String(pid));
+    const nm = p ? p.name : '(ໂປຣໂມຊັ່ນທີ່ລຶບໄປແລ້ວ)';
+    const s = sum.byPromo[pid];
+    rows.push([nm, s.qty, s.count, s.value]);
+  });
+  rows.push([]);
+  rows.push(['ລວມທັງໝົດ', sum.totalQty, sum.totalCount, sum.totalValue]);
+  const csv = rows.map(r=>r.map(v=>{
+    const s = String(v===undefined||v===null?'':v);
+    return s.includes(',')||s.includes('"')||s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `promotions_summary_${_promoYear}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`📥 Export CSV ປີ ${_promoYear} ສຳເລັດ!`,'success');
+}
+function togglePromoDetail(id){
+  if(_promoExpanded.has(id)) _promoExpanded.delete(id); else _promoExpanded.add(id);
+  renderPromotions();
+}
+function _promoDetailHtml(promoId){
+  const entries = (AUDIT_LOG||[]).filter(x=>x.promoId===promoId).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  if(!entries.length) return `<div style="font-size:12px;color:var(--t3);padding:10px 0 0">ຍັງບໍ່ມີການໃຊ້</div>`;
+  return `<div style="margin-top:8px;border-top:1px dashed var(--bdr);padding-top:8px">
+    ${entries.map(e=>`
+      <div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--t2);padding:4px 0;border-bottom:1px solid var(--bdr)">
+        <div>${e.date} ${e.time||''} · ${e.detail||''}</div>
+        <div style="text-align:right;flex-shrink:0">${e.user||''}${e.role?' ('+e.role+')':''}</div>
+      </div>`).join('')}
+  </div>`;
+}
 let _editPromoId = null;
 function openPromoForm(id){
   if(!canManagePromotions()){ toast('ບໍ່ມີສິດຈັດການໂປຣໂມຊັ່ນ','error'); return; }
@@ -11808,6 +11867,35 @@ function renderPromotions(){
     formBox.innerHTML = '';
   }
 
+  const yearBox = document.getElementById('promo-yearly-summary');
+  if(yearBox){
+    const years = new Set();
+    (AUDIT_LOG||[]).forEach(x=>{ if(x.promoId && x.date) years.add(x.date.slice(0,4)); });
+    years.add(String(_promoYear));
+    years.add(String(new Date().getFullYear()));
+    const yearList = [...years].sort((a,b)=>b.localeCompare(a));
+    const sum = promoYearlySummaryData(_promoYear);
+    const rows = Object.keys(sum.byPromo).map(pid=>{
+      const p = PROMOTIONS.find(x=>String(x.id)===String(pid));
+      const nm = p ? p.name : '(ໂປຣໂມຊັ່ນທີ່ລຶບໄປແລ້ວ)';
+      const s = sum.byPromo[pid];
+      return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--bdr)"><div>${nm}</div><div>${s.qty} ຈຳນວນ (${s.count} ຄັ້ງ) · ${fmt(s.value)}</div></div>`;
+    }).join('') || `<div style="font-size:12px;color:var(--t3);padding:8px 0">ຍັງບໍ່ມີການໃຊ້ໂປຣໂມຊັ່ນໃນປີນີ້</div>`;
+    yearBox.innerHTML = `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+        <div style="font-weight:800;font-size:13px">📊 ສະຫຼຸບລວມທຸກໂປຣໂມຊັ່ນ ປີ</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="form-input" style="width:auto;padding:4px 8px;font-size:12px" onchange="setPromoYear(this.value)">
+            ${yearList.map(y=>`<option value="${y}" ${String(_promoYear)===y?'selected':''}>${y}</option>`).join('')}
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="exportPromoYearlyCsv()">📥 CSV</button>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:8px">🎁 ລວມທັງໝົດ: <b>${sum.totalQty}</b> ຈຳນວນ (${sum.totalCount} ຄັ້ງ) · ມູນຄ່າປະມານ <b>${fmt(sum.totalValue)}</b></div>
+      ${rows}
+    </div>`;
+  }
+
   const listBox = document.getElementById('promo-list');
   if(!listBox) return;
   const sorted = [...(PROMOTIONS||[])].sort((a,b)=>b.startDate.localeCompare(a.startDate));
@@ -11815,12 +11903,16 @@ function renderPromotions(){
   listBox.innerHTML = sorted.map(p=>{
     const st = promoStatus(p);
     const usage = promoUsageStats(p.id);
+    const isOpen = _promoExpanded.has(p.id);
     return `<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <div>
+        <div style="flex:1;min-width:0">
           <div style="font-weight:800;font-size:14px">${p.name} <span style="font-size:10px;font-weight:700;color:${st.clr}">● ${st.lbl}</span></div>
           <div style="font-size:12px;color:var(--t3);margin-top:2px">📅 ${p.startDate} → ${p.endDate}${p.note?' · '+p.note:''}</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:6px">🎁 ໃຫ້ຟຣີໄປແລ້ວ: <b>${usage.qty}</b> ຈຳນວນ (${usage.count} ຄັ້ງ) · ມູນຄ່າປະມານ <b>${fmt(usage.value)}</b></div>
+          <div style="font-size:12px;color:var(--t2);margin-top:6px">🎁 ໃຫ້ຟຣີໄປແລ້ວ: <b>${usage.qty}</b> ຈຳນວນ (${usage.count} ຄັ້ງ) · ມູນຄ່າປະມານ <b>${fmt(usage.value)}</b>
+            ${usage.count ? `<button class="btn btn-ghost btn-sm" style="margin-left:8px;padding:2px 8px;font-size:11px" onclick="togglePromoDetail('${p.id}')">${isOpen?'▲ ເຊື່ອງລາຍລະອຽດ':'▼ ເບິ່ງລາຍລະອຽດ'}</button>` : ''}
+          </div>
+          ${isOpen ? _promoDetailHtml(p.id) : ''}
         </div>
         ${canManage ? `<div style="display:flex;gap:6px;flex-shrink:0">
           <button class="btn btn-ghost btn-sm" onclick="openPromoForm('${p.id}')">✏️</button>
