@@ -4320,12 +4320,11 @@ function _commitDiscount(v, dtype, reason, approver){
 }
 
 /* ── ໂມດັນອະນຸມັດ Admin/Manager (ໃຊ້ຮ່ວມກັນລະຫວ່າງສ່ວນຫຼຸດ/ໃຫ້ຟຣີ) ── */
-let _pinApprovalAction = null; // 'discount' | 'free' | 'customPrice'
+let _pinApprovalAction = null; // 'discount' | 'free'
 let _pendingDiscount = null;
 let _pendingFree = null;
-let _pendingCustomPrice = null;
 function cancelPinApproval(){
-  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null; _pendingCustomPrice=null;
+  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null;
   closeModal('modal-pin-approval');
 }
 function confirmPinApproval(){
@@ -4340,11 +4339,8 @@ function confirmPinApproval(){
   } else if(_pinApprovalAction==='free' && _pendingFree){
     const {key, qty, reason} = _pendingFree;
     _commitFree(key, qty, reason, approver.name);
-  } else if(_pinApprovalAction==='customPrice' && _pendingCustomPrice){
-    const {key, newPrice, oldPrice, reason} = _pendingCustomPrice;
-    _commitCustomPrice(key, newPrice, oldPrice, reason, approver.name);
   }
-  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null; _pendingCustomPrice=null;
+  _pinApprovalAction=null; _pendingDiscount=null; _pendingFree=null;
 }
 
 /* CHECKOUT */
@@ -5596,19 +5592,8 @@ function tomSetCustomPrice(key){
   if(newPrice === it.price){ return; }
   const reason = prompt(`ເຫດຜົນທີ່ປ່ຽນລາຄາ (ບັງຄັບ):`, '');
   if(!reason || !reason.trim()){ toast('ຕ້ອງໃສ່ເຫດຜົນ — ຍົກເລີກການປ່ຽນລາຄາ','error'); return; }
-  const isMgmt = S.role==='admin' || S.role==='manager';
-  if(isMgmt){
-    _commitCustomPrice(key, newPrice, oldPrice, reason.trim(), '');
-    return;
-  }
-  // ບໍ່ແມ່ນ Admin/Manager — ຕ້ອງມີລະຫັດອະນຸມັດທຸກຄັ້ງ
-  _pendingCustomPrice = {key, newPrice, oldPrice, reason: reason.trim()};
-  document.getElementById('pin-approval-title').textContent='🔒 ຢືນຢັນການປ່ຽນລາຄາ';
-  document.getElementById('pin-approval-detail').textContent = `${it.name}: ${fmt(oldPrice)} → ${fmt(newPrice)} — ເຫດຜົນ: ${reason.trim()}`;
-  document.getElementById('pin-user').value='';
-  document.getElementById('pin-pass').value='';
-  _pinApprovalAction='customPrice';
-  openModal('modal-pin-approval');
+  // ທຸກຄົນປ່ຽນລາຄາໄດ້ໂດຍກົງ ບໍ່ຕ້ອງມີລະຫັດ Admin/Manager ອະນຸມັດ — ບັນທຶກໄວ້ໃນ Audit Log ທຸກຄັ້ງ
+  _commitCustomPrice(key, newPrice, oldPrice, reason.trim(), '');
 }
 function _commitCustomPrice(key, newPrice, oldPrice, reason, approver){
   const it = tomCart[key];
