@@ -1983,10 +1983,11 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
 
               <div class="set-sec-title" style="margin-top:28px">🌱 ຄັດລອກຂໍ້ມູນອ້າງອີງຈາກສາຂາອື່ນ</div>
               <div style="background:var(--panel-bg2);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:16px">
-                <div style="font-size:13px;color:var(--t1);font-weight:700;margin-bottom:8px">ໃຊ້ຕອນຕັ້ງສາຂາໃໝ່ — ຄັດລອກ ເມນູ+ໝວດ, ລາຍການສາງ, ບົດບາດ, ຄ່າຄະແນນສະສົມ ແລະ ຂໍ້ມູນຮ້ານ/ທະນາຄານ ຈາກສາຂາທີ່ມີຢູ່ແລ້ວ (Firebase project ດຽວກັນ)</div>
+                <div style="font-size:13px;color:var(--t1);font-weight:700;margin-bottom:8px">ໃຊ້ຕອນຕັ້ງສາຂາໃໝ່ — ເລືອກຄັດລອກສະເພາະທີ່ຕ້ອງການ (ເມນູ+ໝວດ / ສາງ / ບົດບາດ / ຂໍ້ມູນຮ້ານ) ຈາກສາຂາທີ່ມີຢູ່ແລ້ວ (Firebase project ດຽວກັນ)</div>
                 <div style="font-size:12px;color:var(--t2);line-height:1.9">
-                  ບໍ່ຄັດລອກ: ບິນ, ລາຍຈ່າຍ, ລູກຄ້າ, ຜູ້ໃຊ້, ໂຕະ, ຝາກຂາຍ (ສາຂາໃໝ່ຈະເລີ່ມຕົ້ນຄືກັນ)<br>
-                  ⚠️ ການຢືນຢັນຈະ <b>ຂຽນທັບ</b> ເມນູ/ໝວດ/ສາງ/ບົດບາດ/ຂໍ້ມູນຮ້ານປັດຈຸບັນ — ຄວນໃຊ້ຕອນສາຂາໃໝ່ຍັງບໍ່ມີຂໍ້ມູນ
+                  ຈະຄັດລອກສະເພາະຫົວຂໍ້ທີ່ຕິກເລືອກໄວ້ໃນໜ້າ preview ເທົ່ານັ້ນ — ອັນທີ່ບໍ່ຕິກຈະຄົງເປັນຂອງສາຂານີ້ຄືເກົ່າ (ບໍ່ຖືກຂຽນທັບ)<br>
+                  ບໍ່ຄັດລອກ (ທຸກກໍລະນີ): ບິນ, ລາຍຈ່າຍ, ລູກຄ້າ, ຜູ້ໃຊ້, ໂຕະ, ຝາກຂາຍ — ຂໍ້ມູນການຂາຍແຍກຂອງໃຜມັນສະເໝີ<br>
+                  ⚠️ ຫົວຂໍ້ໃດທີ່ຕິກເລືອກ ຈະຖືກ <b>ຂຽນທັບ</b> ຂອງສາຂາປັດຈຸບັນທັນທີ
                 </div>
               </div>
               <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
@@ -7619,13 +7620,14 @@ async function fetchBranchCopyPreview(){
     const bankCount = data.store?.bankQR ? Object.keys(data.store.bankQR).length : 0;
     box.innerHTML = `
       <div style="background:var(--panel-bg2);border:1.5px solid var(--brand);border-radius:12px;padding:16px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:10px">📋 ພົບຂໍ້ມູນຈາກ "${src}"</div>
-        <div style="font-size:12px;color:var(--t2);line-height:2">
-          🍽️ ເມນູ: <b>${menuCount}</b> ລາຍການ · 🗂️ ໝວດ: <b>${catCount}</b><br>
-          📦 ລາຍການສາງ: <b>${stockCount}</b> · 👤 ບົດບາດ: <b>${roleCount}</b> · 🏦 ທະນາຄານ/QR: <b>${bankCount}</b><br>
-          🏪 ຊື່ຮ້ານ: <b>${data.store?.name||'—'}</b>
+        <div style="font-size:13px;font-weight:800;margin-bottom:10px">📋 ພົບຂໍ້ມູນຈາກ "${src}" — ເລືອກສິ່ງທີ່ຈະຄັດລອກ</div>
+        <div style="font-size:12px;color:var(--t2);line-height:2.1">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="copy-opt-menu" checked> 🍽️ ເມນູ+ໝວດ — <b>${menuCount}</b> ລາຍການ / ${catCount} ໝວດ</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="copy-opt-stock"> 📦 ລາຍການສາງ — <b>${stockCount}</b> ລາຍການ</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="copy-opt-roles"> 👤 ບົດບາດ (Roles) — <b>${roleCount}</b></label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="copy-opt-store"> 🏪 ຂໍ້ມູນຮ້ານ/ທະນາຄານ/ຄ່າຄະແນນສະສົມ — ${data.store?.name||'—'} (${bankCount} QR)</label>
         </div>
-        <div style="font-size:11px;color:var(--c-red);margin-top:8px">⚠️ ຈະຂຽນທັບ ເມນູ/ໝວດ/ສາງ/ບົດບາດ/ຮ້ານ ຂອງສາຂາປັດຈຸບັນ (${BRANCH_PATH.replace(/\/+$/,'')}) ທັນທີ</div>
+        <div style="font-size:11px;color:var(--c-red);margin-top:8px">⚠️ ຈະຂຽນທັບ <b>ສະເພາະລາຍການທີ່ຕິກໄວ້</b> ຂອງສາຂາປັດຈຸບັນ (${BRANCH_PATH.replace(/\/+$/,'')}) ທັນທີ — ອັນທີ່ບໍ່ຕິກຈະຄົງເປັນຂອງໃຜມັນຄືເກົ່າ</div>
         <div style="display:flex;gap:10px;margin-top:14px">
           <button class="btn btn-primary" onclick="confirmBranchCopy()">✅ ຢືນຢັນຄັດລອກ</button>
           <button class="btn" style="border:1.5px solid var(--bdr)" onclick="cancelBranchCopy()">✖ ຍົກເລີກ</button>
@@ -7644,31 +7646,41 @@ function confirmBranchCopy(){
   if(S.user?.role !== 'admin'){ toast('ໃຊ້ໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
   try{
   const { src, data } = _branchCopyData;
-  if(data.menu){
+  const wantMenu  = !!document.getElementById('copy-opt-menu')?.checked;
+  const wantStock = !!document.getElementById('copy-opt-stock')?.checked;
+  const wantRoles = !!document.getElementById('copy-opt-roles')?.checked;
+  const wantStore = !!document.getElementById('copy-opt-store')?.checked;
+  if(!wantMenu && !wantStock && !wantRoles && !wantStore){ toast('ຍັງບໍ່ໄດ້ຕິກເລືອກຫຍັງ','error'); return; }
+  const copied = [];
+  if(wantMenu && data.menu){
     MENU.length = 0;
-    (Array.isArray(data.menu)?data.menu:Object.values(data.menu)).forEach(m=>MENU.push(m));
+    (Array.isArray(data.menu)?data.menu:Object.values(data.menu)).filter(Boolean).forEach(m=>MENU.push(m));
     if(fbDB) fbSaveMenu();
+    copied.push('ເມນູ');
   }
-  if(data.categories){
+  if(wantMenu && data.categories){
     CATEGORIES.length = 0;
-    (Array.isArray(data.categories)?data.categories:Object.values(data.categories)).forEach(c=>CATEGORIES.push(c));
+    (Array.isArray(data.categories)?data.categories:Object.values(data.categories)).filter(Boolean).forEach(c=>CATEGORIES.push(c));
     if(fbDB) fbSaveCategories();
+    copied.push('ໝວດ');
   }
-  if(data.stockItems){
-    const items = Object.values(data.stockItems);
+  if(wantStock && data.stockItems){
+    const items = Object.values(data.stockItems).filter(Boolean);
     STOCK_ITEMS.length = 0;
-    items.forEach(it=>{ STOCK_ITEMS.push(it); if(fbDB) fbSaveStockItem(it); });
+    items.forEach(it=>{ if(!it || it.id==null) return; STOCK_ITEMS.push(it); if(fbDB) fbSaveStockItem(it); });
+    copied.push('ສາງ');
   }
-  if(data.roles){
+  if(wantRoles && data.roles){
     ROLES_DATA.length = 0;
-    (Array.isArray(data.roles)?data.roles:Object.values(data.roles)).forEach(r=>ROLES_DATA.push(r));
+    (Array.isArray(data.roles)?data.roles:Object.values(data.roles)).filter(Boolean).forEach(r=>ROLES_DATA.push(r));
     if(fbDB) fbDB.ref(BRANCH_PATH+'roles').set(ROLES_DATA).catch(e=>{});
+    copied.push('ບົດບາດ');
   }
-  if(data.loyalty_config){
+  if(wantStore && data.loyalty_config){
     Object.assign(LOYALTY_CONFIG, data.loyalty_config);
     if(fbDB) fbDB.ref(BRANCH_PATH+'loyalty_config').set({earnRate:LOYALTY_CONFIG.earnRate, redeemRate:LOYALTY_CONFIG.redeemRate}).catch(e=>{});
   }
-  if(data.store){
+  if(wantStore && data.store){
     Object.assign(STORE_INFO, data.store);
     if(data.store.bankQR){
       Object.keys(BANK_QR).forEach(k=>delete BANK_QR[k]);
@@ -7676,8 +7688,9 @@ function confirmBranchCopy(){
     }
     if(fbDB) fbSaveStore();
     if(typeof applyStoreEverywhere==='function') applyStoreEverywhere();
+    copied.push('ຮ້ານ');
   }
-  toast(`✅ ຄັດລອກຈາກ "${src}" ສຳເລັດ`,'success');
+  toast(`✅ ຄັດລອກ${copied.length?' ('+copied.join(', ')+')':''} ຈາກ "${src}" ສຳເລັດ`,'success');
   _branchCopyData = null;
   document.getElementById('copy-branch-preview').innerHTML = '';
   if(typeof renderMenuMgmt==='function') renderMenuMgmt();
@@ -11461,7 +11474,7 @@ function fbDeleteConsignPayout(id){
   fbDB.ref(BRANCH_PATH+'consignPayouts/'+id).remove().catch(e=>console.warn('fbDelConsignPayout:',e));
 }
 function fbSaveStockItem(item){
-  if(!fbDB) return;
+  if(!fbDB || !item || item.id==null) return;
   fbDB.ref(BRANCH_PATH+'stockItems/'+item.id).set(item).catch(e=>console.warn('fbSaveStockItem:',e));
 }
 function fbDeleteStockItem(id){
