@@ -1108,6 +1108,7 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
   </script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
@@ -11267,13 +11268,14 @@ function confirmMoveTable(){
 //  ຂໍ້ມູນທຸກຢ່າງເກັບໃນ Firebase → ໃຊ້ໄດ້ທຸກເຄື່ອງ ບໍ່ຫາຍ
 // ================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCyKwYBXsXWWxKNclJHTkXt-ZVfW3LHqqI",
-  authDomain: "green-house-cafe.firebaseapp.com",
-  databaseURL: "https://green-house-cafe-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "green-house-cafe",
-  storageBucket: "green-house-cafe.firebasestorage.app",
-  messagingSenderId: "731666858286",
-  appId: "1:731666858286:web:1aa2f4d4bebdcbb3413abf"
+  apiKey: "AIzaSyCWzvtfqEflglOKfxVPe5b2vWk1kMsodvg",
+  authDomain: "greenhouse-cafe-kgs-f976a.firebaseapp.com",
+  databaseURL: "https://greenhouse-cafe-kgs-f976a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "greenhouse-cafe-kgs-f976a",
+  storageBucket: "greenhouse-cafe-kgs-f976a.firebasestorage.app",
+  messagingSenderId: "134896853415",
+  appId: "1:134896853415:web:afb10e391a96e6b50a5682",
+  measurementId: "G-7LRTL514X8"
 };
 let fbApp=null, fbDB=null;
 const BRANCH_PATH = 'branch3/'; // ⚠️ ແຍກຂໍ້ມູນສາຂາ 2 ອອກຈາກສາຂາຫຼັກ (ໃຊ້ Firebase project ດຽວກັນ, ແຍກ path)
@@ -11328,25 +11330,31 @@ function fbUploadImage(file, path, onSuccess, onError){
 function initFirebase(){
   try{
     fbApp = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(firebaseConfig);
-    fbDB      = firebase.database();
-    console.log('🔥 Firebase connected');
-    fbLoadAll();        // ໂຫລດຂໍ້ມູນທັງໝົດ
-    fbListenOrders();   // ຟັງ QR orders real-time
-    fbListenTables();   // ຟັງ table status real-time
-    fbListenBills();        // ຟັງ bills real-time (dashboard sync)
-    fbListenCustomers();    // ຟັງ customers real-time
-    fbListenLoyaltyConfig();// ຟັງ loyalty settings real-time
-    fbListenExpenses();     // ຟັງ expenses real-time
-    fbListenConsignPayouts(); // ຟັງ ຈ່າຍເງິນຝາກຂາຍ real-time
-    fbListenStockItems();     // ຟັງ ລາຍການສາງ real-time
-    fbListenStockMovements(); // ຟັງ ການເຄື່ອນໄຫວສາງ real-time
-    fbListenMenu();         // ຟັງ menu real-time
-    fbListenCategories();   // ຟັງ categories real-time
-    fbListenStore();        // ຟັງ store info real-time
-    fbListenUsers();        // ຟັງ users real-time
-    fbListenRoles();
-    fbListenAuditLog();
-    fbListenPromotions();        // ຟັງ roles real-time
+    // ── ຄວາມປອດໄພ: ຕ້ອງ sign in (ແບບບໍ່ລະບຸຕົວຕົນ) ກັບ Firebase ກ່ອນຈຶ່ງອ່ານ/ຂຽນຂໍ້ມູນໄດ້ ──
+    // (ຮອງຮັບ Firebase Security Rules ແບບ "auth != null" — ກັນຄົນນອກດຶງຂໍ້ມູນຜ່ານ URL ໂດຍກົງ)
+    firebase.auth().signInAnonymously().catch(e=>console.warn('Firebase anon auth failed:', e.message));
+    firebase.auth().onAuthStateChanged(function(user){
+      if(!user || fbDB) return; // ລໍຖ້າຈົນກວ່າຈະ sign in ສຳເລັດ, ແລະ setup ຄັ້ງດຽວເທົ່ານັ້ນ
+      fbDB = firebase.database();
+      console.log('🔥 Firebase connected (auth uid: '+user.uid+')');
+      fbLoadAll();        // ໂຫລດຂໍ້ມູນທັງໝົດ
+      fbListenOrders();   // ຟັງ QR orders real-time
+      fbListenTables();   // ຟັງ table status real-time
+      fbListenBills();        // ຟັງ bills real-time (dashboard sync)
+      fbListenCustomers();    // ຟັງ customers real-time
+      fbListenLoyaltyConfig();// ຟັງ loyalty settings real-time
+      fbListenExpenses();     // ຟັງ expenses real-time
+      fbListenConsignPayouts(); // ຟັງ ຈ່າຍເງິນຝາກຂາຍ real-time
+      fbListenStockItems();     // ຟັງ ລາຍການສາງ real-time
+      fbListenStockMovements(); // ຟັງ ການເຄື່ອນໄຫວສາງ real-time
+      fbListenMenu();         // ຟັງ menu real-time
+      fbListenCategories();   // ຟັງ categories real-time
+      fbListenStore();        // ຟັງ store info real-time
+      fbListenUsers();        // ຟັງ users real-time
+      fbListenRoles();
+      fbListenAuditLog();
+      fbListenPromotions();        // ຟັງ roles real-time
+    });
   } catch(err){ console.warn('Firebase init failed:', err.message); }
 }
 
