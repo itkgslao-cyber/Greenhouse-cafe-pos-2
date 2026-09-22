@@ -1742,13 +1742,6 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
                 </div>
                 <select class="form-input" style="width:auto;padding:6px 10px;font-size:12px" id="exp-cat-filter" onchange="renderExpenseList()">
                   <option value="all">ທຸກໝວດ</option>
-                  <option value="ingredient">🥬 ວັດຖຸດິບ</option>
-                  <option value="product_stock">🧃 ສາງສິນຄ້າ</option>
-                  <option value="salary">👷 ແຮງງານ</option>
-                  <option value="utility">💡 ນ້ຳ-ໄຟ</option>
-                  <option value="equipment">🛠️ ຄ່າອຸປະກອນ</option>
-                  <option value="repair">🔧 ຄ່າສ້ອມແປງ</option>
-                  <option value="other">📦 ອື່ນໆ</option>
                 </select>
               </div>
               <div id="exp-list" style="max-height:400px;overflow-y:auto">
@@ -1759,6 +1752,10 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
               <div class="card">
                 <div class="card-title" style="margin-bottom:14px">ສັດສ່ວນລາຍຈ່າຍ</div>
                 <div id="exp-breakdown"></div>
+              </div>
+              <div class="card">
+                <div class="card-title" style="margin-bottom:10px">ສະຫຼຸບປະລິມານ (ຕາມຊື່ລາຍການ)</div>
+                <div id="exp-qty-summary" style="max-height:220px;overflow-y:auto"></div>
               </div>
               <div class="card">
                 <div class="card-title" id="exp-trend-title" style="margin-bottom:4px">ກຳໄລ 7 ວັນ</div>
@@ -8875,12 +8872,50 @@ function expFormatDate(ds){
 
 // ── MAIN RENDER ──
 function renderExpenseView(){
+  renderExpCatFilterOptions();
   renderExpWeekBar();
   renderPnL();
   renderExpCatSummary();
   renderExpenseList();
   renderExpBreakdown();
+  renderExpQtySummary();
   renderExpTrend();
+}
+// ── ໝວດໃນຊ່ອງກັ່ນຕອງລາຍການ (ສ້າງແບບ dynamic ຈາກ EXP_CATS ປັດຈຸບັນ) ──
+function renderExpCatFilterOptions(){
+  const sel = document.getElementById('exp-cat-filter');
+  if(!sel || sel.dataset.built) return; // build once, options don't change at runtime
+  const order = ['fixed','variable','overhead'];
+  let html2 = '<option value="all">ທຸກໝວດ</option>';
+  order.forEach(g=>{
+    Object.entries(EXP_CATS).filter(([k,c])=>c.group===g).forEach(([k,c])=>{
+      html2 += `<option value="${k}">${c.icon} ${c.label}</option>`;
+    });
+  });
+  sel.innerHTML = html2;
+  sel.dataset.built = '1';
+}
+// ── ສະຫຼຸບປະລິມານ ຕາມຊື່ລາຍການ (ສຳລັບໄລຍະທີ່ເລືອກຢູ່) ──
+function renderExpQtySummary(){
+  const el = document.getElementById('exp-qty-summary');
+  if(!el) return;
+  const items = expFiltered().filter(e=>e.qty!=null && e.qty!=='' && !isNaN(e.qty));
+  if(!items.length){
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">ຍັງບໍ່ມີລາຍການທີ່ໃສ່ປະລິມານ</div>`;
+    return;
+  }
+  const byKey = {};
+  items.forEach(e=>{
+    const key = e.name + '||' + (e.unit||'');
+    if(!byKey[key]) byKey[key] = {name:e.name, unit:e.unit||'', qty:0, count:0};
+    byKey[key].qty += (parseFloat(e.qty)||0);
+    byKey[key].count += 1;
+  });
+  const rows = Object.values(byKey).sort((a,b)=>b.qty-a.qty);
+  el.innerHTML = rows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bdr)">
+    <div style="font-size:12px">${r.name}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--brand);white-space:nowrap;margin-left:8px">${r.qty.toLocaleString()}${r.unit?' '+r.unit:''}</div>
+  </div>`).join('');
 }
 
 // ── WEEK BAR ──
