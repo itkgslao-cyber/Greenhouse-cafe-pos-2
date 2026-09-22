@@ -2534,6 +2534,27 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
 
     <div class="form-row">
       <div class="form-group">
+        <label class="form-label">ປະລິມານ (ທາງເລືອກ)</label>
+        <input class="form-input" type="number" id="exp-qty" placeholder="ເຊັ່ນ: 5" min="0" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ໜ່ວຍ</label>
+        <select class="form-input" id="exp-unit">
+          <option value="">— ບໍ່ໄດ້ໃຊ້ —</option>
+          <option value="ກິໂລ">ກິໂລ (kg)</option>
+          <option value="ອັນ">ອັນ</option>
+          <option value="ຕຸກ">ຕຸກ</option>
+          <option value="ແພັກ">ແພັກ</option>
+          <option value="ລິດ">ລິດ</option>
+          <option value="ຖົງ">ຖົງ</option>
+          <option value="ຂວດ">ຂວດ</option>
+          <option value="ອື່ນໆ">ອື່ນໆ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
         <label class="form-label">ວັນທີ</label>
         <input class="form-input" type="date" id="exp-date">
       </div>
@@ -8790,38 +8811,42 @@ let stockMoveIdCtr = 1;
 
 const EXP_GROUPS = {
   fixed:    {label:'ຄ່າໃຊ້ຈ່າຍ Fixed (ຄົງທີ່)',   color:'#CA8A04', bg:'#FEFCE8'},
-  variable: {label:'ຄ່າໃຊ້ຈ່າຍ Variable (ແປປວນ)', color:'#2563EB', bg:'#EFF6FF'},
+  variable: {label:'ຄ່າໃຊ້ຈ່າຍ Variable (ຜັນແປ)', color:'#2563EB', bg:'#EFF6FF'},
   overhead: {label:'ຄ່າໃຊ້ຈ່າຍ Overhead',         color:'#DC2626', bg:'#FEF2F2'},
 };
 const EXP_CATS = {
   // ── Fixed (ຄົງທີ່) ──
-  rent:        {group:'fixed', icon:'🏠', label:'ຄ່າເຊົ່າຮ້ານ',            color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
-  payroll:     {group:'fixed', icon:'💰', label:'ຄ່າເງິນເດືອນ',            color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
-  internet:    {group:'fixed', icon:'🌐', label:'ຄ່າອິນເຕີເນັດ',           color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
-  kgs_fee:     {group:'fixed', icon:'📦', label:'ຄ່າບໍລິການແພັກ (KGS)',    color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
-  insurance:   {group:'fixed', icon:'🛡️', label:'ຄ່າປະກັນໄພຮ້ານ',          color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
+  rent:          {group:'fixed', icon:'🏠', label:'ຄ່າເຊົ່າຮ້ານ',              color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
+  payroll:       {group:'fixed', icon:'💰', label:'ຄ່າເງິນເດືອນ',              color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
+  internet:      {group:'fixed', icon:'🌐', label:'ຄ່າອິນເຕີເນັດ',             color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
+  kgs_admin_fee: {group:'fixed', icon:'📦', label:'ຄ່າບໍລິຫານປ້ຳ (KGS)',        color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
+  payroll_tax:   {group:'fixed', icon:'🧾', label:'ອາກອນເງິນເດືອນ',            color:EXP_GROUPS.fixed.color, bg:EXP_GROUPS.fixed.bg},
 
-  // ── Variable (ແປປວນ) ──
-  ingredient:  {group:'variable', icon:'🥬', label:'ວັດຖຸດິບ',                    color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
-  ingr_pack:   {group:'variable', icon:'🧂', label:'ວັດຖຸດິບ/ອຸປະກອນບັນຈຸ',        color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
-  packaging:   {group:'variable', icon:'📦', label:'ແພັກເກຈິ້ງ',                  color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
-  electricity: {group:'variable', icon:'💡', label:'ຄ່າໄຟ',                      color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
-  gas_spice:   {group:'variable', icon:'🌶️', label:'ຄ່ານ້ຳມັນແກັດ/ຄ່າ Spice',    color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
-  firewood:    {group:'variable', icon:'🪵', label:'ຄ່າແກັດໄມ້/ໄມ້ຟືນ',           color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
-  delivery:    {group:'variable', icon:'🚚', label:'ຄ່າຄົນສົ່ງເຄື່ອງ',            color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  // ── Variable (ຜັນແປ) ──
+  ingredient:    {group:'variable', icon:'🥬', label:'ວັດຖຸດິບຄົວ',                    color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  ingr_pack:     {group:'variable', icon:'🧂', label:'ວັດຖຸດິບ/ອຸປະກອນບານ້ຳ',           color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  coffee_bean:   {group:'variable', icon:'☕', label:'ເມັດກາເຟ',                       color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  spice:         {group:'variable', icon:'🌶️', label:'ເຄື່ອງປຸງ Spice',                color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  rice:          {group:'variable', icon:'🌾', label:'ເຂົ້າສານ',                       color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  cooking_gas:   {group:'variable', icon:'🔥', label:'ຄ່າແກັດຫຸງຕົ້ມ',                 color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  water:         {group:'variable', icon:'💧', label:'ນ້ຳດື່ມ/ນ້ຳໃຊ້(ຄົວ)',            color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  buy_thailand:  {group:'variable', icon:'🇹🇭', label:'ຊື້ເຄື່ອງຈາກໄທ',                color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  hq_withdraw:   {group:'variable', icon:'🏢', label:'ເບີກເຄື່ອງຈາກຫ້ອງການໃຫຍ່',       color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
+  buy_resale:    {group:'variable', icon:'🛍️', label:'ຊື້ເຄື່ອງ(ຂາຍອອກ)',              color:EXP_GROUPS.variable.color, bg:EXP_GROUPS.variable.bg},
 
   // ── Overhead ──
-  staff_cost:  {group:'overhead', icon:'🧑‍🍳', label:'ຄ່າພະນັກງານ',            color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  fuel:        {group:'overhead', icon:'⛽', label:'ຄ່ານ້ຳມັນລົດ',               color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  admin:       {group:'overhead', icon:'🗂️', label:'ຄ່າຈັດ Admin/ບໍລິຫານ',      color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  accounting:  {group:'overhead', icon:'🧮', label:'ຄ່າບັນຊີ',                  color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  equipment:   {group:'overhead', icon:'🛠️', label:'ຄ່າອຸປະກອນ/ບຳລຸງຮັກສາ',     color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  marketing:   {group:'overhead', icon:'📢', label:'ຄ່າໂຄສະນາ',                 color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  security:    {group:'overhead', icon:'🚨', label:'ຄ່າຮັກສາຄວາມປອດໄພ',         color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
-  supplies:    {group:'overhead', icon:'🍽️', label:'ຄ່າສະບຽງອາຫານ',             color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  electricity:   {group:'overhead', icon:'💡', label:'ຄ່າໄຟຟ້າ',                  color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  water_bill:    {group:'overhead', icon:'🚰', label:'ຄ່ານ້ຳປະປາ',                color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  admin:         {group:'overhead', icon:'🗂️', label:'ຈ່າຍ Admin/ບໍລິຫານ',         color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  fuel:          {group:'overhead', icon:'⛽', label:'ຄ່ານ້ຳມັນລົດ',               color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  repair:        {group:'overhead', icon:'🔧', label:'ຄ່າສ້ອມແປງ/ບຳລຸງຮັກສາ',      color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  cleaning:      {group:'overhead', icon:'🧹', label:'ຄ່າອະນາໄມ',                 color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  waste:         {group:'overhead', icon:'🗑️', label:'ຄ່າຂີ້ເຫຍື້ອ',               color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  income_tax:    {group:'overhead', icon:'🧾', label:'ອາກອນລາຍຮັບ',               color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
+  kitchen_equip: {group:'overhead', icon:'🍳', label:'ອຸປະກອນຄົວ',                color:EXP_GROUPS.overhead.color, bg:EXP_GROUPS.overhead.bg},
 
   // ── ໝວດສຳຮອງ (ບໍ່ສະແດງໃນໜ້າເລືອກ) ໃຊ້ສະແດງລາຍຈ່າຍເກົ່າທີ່ບັນທຶກກ່ອນປ່ຽນໝວດໃໝ່ ──
-  other:       {group:null, icon:'📁', label:'ອື່ນໆ (ເກົ່າ)', color:'#6B7280', bg:'#F3F4F6'},
+  other:         {group:null, icon:'📁', label:'ອື່ນໆ (ເກົ່າ)', color:'#6B7280', bg:'#F3F4F6'},
 };
 
 // ── STATE ──
@@ -9027,7 +9052,7 @@ function renderExpenseList(){
       <div style="font-size:18px;flex-shrink:0">${c.icon}</div>
       <div class="exp-row-info">
         <div class="exp-row-name">${e.name}</div>
-        <div class="exp-row-meta">${c.label} · ${expFormatDate(e.date)}${e.by?' · '+e.by:''}${e.note?' · '+e.note:''}</div>
+        <div class="exp-row-meta">${c.label}${(e.qty!=null&&e.qty!=='')?' · '+e.qty+(e.unit?' '+e.unit:''):''} · ${expFormatDate(e.date)}${e.by?' · '+e.by:''}${e.note?' · '+e.note:''}</div>
       </div>
       <div class="exp-row-amt">${fmt(e.amount)}</div>
       <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px">
@@ -9144,6 +9169,8 @@ function openAddExpenseModal(){
   document.getElementById('exp-date').value   = expCurrentDate;
   document.getElementById('exp-by').value     = S.user?.name || '';
   document.getElementById('exp-note').value   = '';
+  document.getElementById('exp-qty').value    = '';
+  document.getElementById('exp-unit').value   = '';
   expPickedCat = 'ingredient';
   renderExpCatPicker();
   document.querySelectorAll('#exp-cat-picker .exp-type-card').forEach(el=>{
@@ -9162,6 +9189,8 @@ function openEditExpense(id){
   document.getElementById('exp-date').value   = e.date;
   document.getElementById('exp-by').value     = e.by;
   document.getElementById('exp-note').value   = e.note;
+  document.getElementById('exp-qty').value    = e.qty!=null ? e.qty : '';
+  document.getElementById('exp-unit').value   = e.unit || '';
   expPickedCat = e.cat;
   renderExpCatPicker();
   document.querySelectorAll('#exp-cat-picker .exp-type-card').forEach(el=>{
@@ -9180,6 +9209,9 @@ function saveExpense(){
   const date   = document.getElementById('exp-date').value;
   const by     = document.getElementById('exp-by').value.trim();
   const note   = document.getElementById('exp-note').value.trim();
+  const qtyRaw = document.getElementById('exp-qty').value;
+  const qty    = qtyRaw!=='' ? (parseFloat(qtyRaw)||0) : null;
+  const unit   = document.getElementById('exp-unit').value || '';
   if(!name)   { toast('ໃສ່ຊື່ລາຍການ','error'); return; }
   if(amount<=0){ toast('ໃສ່ຈຳນວນ','error'); return; }
   if(!date)   { toast('ເລືອກວັນທີ','error'); return; }
@@ -9189,12 +9221,12 @@ function saveExpense(){
     if(S.user?.role !== 'admin'){ toast('ແກ້ໄຂໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
     const e = EXPENSES.find(x=>x.id===parseInt(editId));
     if(e){
-      Object.assign(e,{cat:expPickedCat,name,amount,date,by,note});
+      Object.assign(e,{cat:expPickedCat,name,amount,date,by,note,qty,unit});
       if(fbDB) fbSaveExpense(e);
       toast('ແກ້ໄຂແລ້ວ');
     }
   } else {
-    const newExp = {id:expIdCtr++,cat:expPickedCat,name,amount,date,by,note};
+    const newExp = {id:expIdCtr++,cat:expPickedCat,name,amount,date,by,note,qty,unit};
     EXPENSES.push(newExp);
     if(fbDB){ fbSaveExpense(newExp); fbDB.ref(BRANCH_PATH+'meta/expIdCtr').set(expIdCtr).catch(e=>{}); }
     toast(`✅ ບັນທຶກ ${name} ${fmt(amount)}`);
