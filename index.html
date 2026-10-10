@@ -11672,7 +11672,7 @@ function kgsMFlush(manual){
   if(_kgsMBusy) return Promise.resolve(false);
   const q=kgsMQLoad();
   if(!q.length){ if(manual) toast('ບໍ່ມີລາຍການຄ້າງສົ່ງ'); return Promise.resolve(true); }
-  const batch=q.slice(0,40);
+  const batch=q.slice(0,100);
   _kgsMBusy=true;
   return fetch(KGS_MIRROR.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({token:KGS_MIRROR.token,branch:BRANCH_PATH.replace(/\/+$/,''),
@@ -11684,7 +11684,8 @@ function kgsMFlush(manual){
         const sent={}; batch.forEach(x=>{ sent[x.kind+':'+x.id]=x.t; });
         const cur=kgsMQLoad().filter(x=>sent[x.kind+':'+x.id]!==x.t);
         kgsMQSave(cur);
-        if(cur.length) setTimeout(()=>kgsMFlush(false),800);
+        if(cur.length) setTimeout(()=>kgsMFlush(false),300);
+        else if(window._kgsMTotal){ toast('✅ ສົ່ງເຂົ້າ Google Sheet ຄົບແລ້ວ '+window._kgsMTotal+' ລາຍການ'); window._kgsMTotal=0; }
         if(manual) toast('✅ ສົ່ງເຂົ້າ Google Sheet ແລ້ວ '+batch.length+' ລາຍການ');
         return true;
       }
@@ -11714,7 +11715,7 @@ function kgsMRenderCfg(){
   [u,t].forEach(function(el){ if(el && !el._kd){ el._kd=1; el.addEventListener('input',function(){ el.dataset.d='1'; }); } });
   if(u && !u.dataset.d && document.activeElement!==u && u.value!==(KGS_MIRROR.url||'')) u.value=KGS_MIRROR.url||'';
   if(t && !t.dataset.d && document.activeElement!==t && t.value!==(KGS_MIRROR.token||'')) t.value=KGS_MIRROR.token||'';
-  if(st) st.textContent=KGS_MIRROR.url?('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+kgsMQLoad().length+' ລາຍການ'):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ';
+  if(st){ const n=kgsMQLoad().length; st.textContent=KGS_MIRROR.url?((window._kgsMTotal&&n)?('⏳ ກຳລັງສົ່ງ... ສົ່ງແລ້ວ '+(window._kgsMTotal-n)+' / '+window._kgsMTotal+' ລາຍການ'):('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+n+' ລາຍການ')):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ'; }
 }
 function kgsMSaveCfg(){
   const url=(document.getElementById('mirror-url').value||'').trim();
@@ -11744,7 +11745,7 @@ function kgsMBackfill(){
   const t=Date.now();
   BILLS.forEach(b=>{ if(b && b.id && !have['bill:'+b.id]) q.push({op:'save',kind:'bill',id:String(b.id),data:JSON.parse(JSON.stringify(b)),t:t}); });
   EXPENSES.forEach(x=>{ if(x && x.id!==undefined && !have['expense:'+x.id]) q.push({op:'save',kind:'expense',id:String(x.id),data:JSON.parse(JSON.stringify(x)),t:t}); });
-  kgsMQSave(q); kgsMFlush(true);
+  window._kgsMTotal=q.length; kgsMQSave(q); toast('⏳ ກຳລັງສົ່ງ '+q.length+' ລາຍການ ໂດຍອັດຕະໂນມັດ — ປ່ອຍໜ້ານີ້ເປີດໄວ້'); kgsMFlush(false);
 }
 setInterval(()=>{ try{ if(kgsMQLoad().length) kgsMFlush(false); kgsMBadge(); kgsMRenderCfg(); }catch(e){} }, 30000);
 setInterval(()=>{ try{ kgsMRenderCfg(); }catch(e){} }, 2500);
