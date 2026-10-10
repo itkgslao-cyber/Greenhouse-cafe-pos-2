@@ -1966,6 +1966,24 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
               </div>
               <button class="btn btn-primary" onclick="exportBackupJSON()">📥 ດາວໂຫລດຂໍ້ມູນສຳຮອງ</button>
 
+              <div class="set-sec-title" style="margin-top:28px">📄 Google Sheet — ສຳເນົາອັດຕະໂນມັດ</div>
+              <div id="mirror-card" style="background:var(--panel-bg2);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:16px">
+                <div style="font-size:12px;color:var(--t2);line-height:1.9;margin-bottom:10px">
+                  ທຸກບິນ ແລະລາຍຈ່າຍ ຈະຖືກສຳເນົາລົງ Google Sheet ຂອງບໍລິສັດ (ແຖບ Bills / Expenses / Log) ແລະສົ່ງຊ້ຳອັດຕະໂນມັດຖ້າຍັງບໍ່ສຳເລັດ.
+                  ການລຶບໃນແອັບ ຈະໝາຍ deleted ໃນ Sheet ບໍ່ລຶບແຖວ.
+                </div>
+                <div style="font-size:12px;color:var(--t1);font-weight:700;margin-bottom:4px">Web app URL (ລົງທ້າຍ /exec)</div>
+                <input id="mirror-url" type="text" class="form-input" style="width:100%;margin-bottom:10px" placeholder="https://script.google.com/macros/s/.../exec">
+                <div style="font-size:12px;color:var(--t1);font-weight:700;margin-bottom:4px">Token</div>
+                <input id="mirror-token" type="password" class="form-input" style="width:100%;margin-bottom:10px" placeholder="Token ທີ່ຕັ້ງໃນ Apps Script">
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn btn-primary" onclick="kgsMSaveCfg()">💾 ບັນທຶກ</button>
+                  <button class="btn" style="border:1.5px solid var(--bdr)" onclick="kgsMTest()">🔌 ທົດສອບເຊື່ອມ</button>
+                  <button class="btn" style="border:1.5px solid var(--bdr)" onclick="kgsMBackfill()">📤 ສົ່ງຂໍ້ມູນທີ່ມີທັງໝົດ</button>
+                </div>
+                <div id="mirror-status" style="margin-top:10px;font-size:12px;color:var(--t2)"></div>
+              </div>
+
               <div class="set-sec-title" style="margin-top:28px">📤 ນຳເຂົ້າຂໍ້ມູນເກົ່າ / Import Historical Data</div>
               <div style="background:var(--panel-bg2);border:1px solid var(--bdr);border-radius:12px;padding:16px;margin-bottom:16px">
                 <div style="font-size:13px;color:var(--t1);font-weight:700;margin-bottom:8px">ນຳເຂົ້າໄຟລ໌ export ຈາກລະບົບເກົ່າໄດ້ໂດຍກົງ (.xls) ຫຼືໄຟລ໌ .json ທີ່ແປງແລ້ວ</div>
@@ -4835,7 +4853,7 @@ function deleteVoidedBill(id){
   if(!confirm(`ລຶບບິນ ${b.id} ອອກຖາວອນ?\n\nການລຶບນີ້ຈະລຶບອອກຈາກ Firebase ຈິງ — ບໍ່ສາມາດກູ້ຄືນໄດ້`)) return;
   const idx = BILLS.indexOf(b);
   if(idx>-1) BILLS.splice(idx,1);
-  if(fbDB) fbDB.ref(BRANCH_PATH+'bills/'+b.id).remove().catch(e=>{});
+  kgsPRemove('bill',b.id); kgsMAdd('delete','bill',{id:b.id}); if(fbDB) fbDB.ref(BRANCH_PATH+'bills/'+b.id).remove().catch(e=>{});
   renderBills();
   renderDash();
   toast(`✅ ລຶບ ${b.id} ຖາວອນແລ້ວ`,'success');
@@ -7537,7 +7555,7 @@ function confirmImportOldData(){
     if(fbDB) fbSaveBill(b);
   });
   expenses.forEach(x=>{
-    const newExp = { id: expIdCtr++, cat:x.cat||'other', name:x.name||'', amount:x.amount||0, date:x.date||'', by:x.by||'Admin', note:x.note||'', imported:true, importBatch: batchId };
+    const newExp = { id: kgsNewExpId(), cat:x.cat||'other', name:x.name||'', amount:x.amount||0, date:x.date||'', by:x.by||'Admin', note:x.note||'', imported:true, importBatch: batchId };
     EXPENSES.push(newExp);
     if(fbDB) fbSaveExpense(newExp);
   });
@@ -7579,12 +7597,12 @@ function undoImportBatch(batchId){
   billsToRemove.forEach(b=>{
     const idx = BILLS.indexOf(b);
     if(idx>-1) BILLS.splice(idx,1);
-    if(fbDB) fbDB.ref(BRANCH_PATH+'bills/'+b.id).remove().catch(e=>{});
+    kgsPRemove('bill',b.id); kgsMAdd('delete','bill',{id:b.id}); if(fbDB) fbDB.ref(BRANCH_PATH+'bills/'+b.id).remove().catch(e=>{});
   });
   expToRemove.forEach(x=>{
     const idx = EXPENSES.indexOf(x);
     if(idx>-1) EXPENSES.splice(idx,1);
-    if(fbDB) fbDB.ref(BRANCH_PATH+'expenses/'+x.id).remove().catch(e=>{});
+    kgsPRemove('expense',x.id); kgsMAdd('delete','expense',{id:x.id}); if(fbDB) fbDB.ref(BRANCH_PATH+'expenses/'+x.id).remove().catch(e=>{});
   });
   toast(`✅ ຍົກເລີກຊຸດແລ້ວ: ລຶບ ${billsToRemove.length} ບິນ, ${expToRemove.length} ລາຍຈ່າຍ`,'success');
   if(typeof renderExpenseView==='function') renderExpenseView();
@@ -8799,6 +8817,13 @@ finalConfirmPayment = function(){
 // ── DATA ──
 let EXPENSES = []
 let expIdCtr = 1;
+let _kgsLastExpId = 0;
+/* ID ລາຍຈ່າຍບໍ່ຊ້ຳ ແມ່ນແຕ່ບັນທຶກຍ້ອນຫຼັງຫຼາຍເຄື່ອງ/ຫຼາຍຄົນພ້ອມກັນ (ອີງເວລາ + ເລກສຸ່ມ ບໍ່ອີງເລກນັບທີ່ອາດຄ້າງ) */
+function kgsNewExpId(){
+  let n = Date.now()*1000 + Math.floor(Math.random()*1000);
+  if(n <= _kgsLastExpId) n = _kgsLastExpId + 1;
+  _kgsLastExpId = n; return n;
+}
 let CONSIGN_PAYOUTS = [];
 let consignPayoutIdCtr = 1;
 let STOCK_ITEMS = [];
@@ -9261,7 +9286,7 @@ function saveExpense(){
       toast('ແກ້ໄຂແລ້ວ');
     }
   } else {
-    const newExp = {id:expIdCtr++,cat:expPickedCat,name,amount,date,by,note,qty,unit};
+    const newExp = {id:kgsNewExpId(),cat:expPickedCat,name,amount,date,by,note,qty,unit};
     EXPENSES.push(newExp);
     if(fbDB){ fbSaveExpense(newExp); fbDB.ref(BRANCH_PATH+'meta/expIdCtr').set(expIdCtr).catch(e=>{}); }
     toast(`✅ ບັນທຶກ ${name} ${fmt(amount)}`);
@@ -9275,7 +9300,7 @@ function deleteExpense(id){
   const e = EXPENSES.find(x=>x.id===id);
   if(!e||!confirm(`ລົບ "${e.name}"?`)) return;
   EXPENSES = EXPENSES.filter(x=>x.id!==id);
-  if(fbDB) fbDB.ref(BRANCH_PATH+'expenses/'+id).remove().catch(err=>console.warn('fbDeleteExp:',err));
+  kgsPRemove('expense',id); kgsMAdd('delete','expense',{id:id}); if(fbDB) fbDB.ref(BRANCH_PATH+'expenses/'+id).remove().catch(err=>console.warn('fbDeleteExp:',err));
   renderExpenseView();
   toast('ລົບລາຍຈ່າຍແລ້ວ','info');
 }
@@ -11559,14 +11584,179 @@ function fbSaveOneTable(tableId){
   // (keyed correctly by id on read) avoids this class of desync entirely.
   fbSaveTables();
 }
-function fbSaveBill(bill){
-  if(!fbDB) return;
-  fbDB.ref(BRANCH_PATH+'bills/'+bill.id).set(bill).catch(e=>console.warn('fbSaveBill:',e));
+/* ===== KGS SAFE-WRITE: ບິນ/ລາຍຈ່າຍ ບັນທຶກບໍ່ສຳເລັດ → ແຈ້ງເຕືອນ + ເກັບໄວ້ລອງໃໝ່ອັດຕະໂນມັດ ===== */
+function kgsPKey(){ return 'kgs_pending_writes_'+BRANCH_PATH; }
+function kgsPLoad(){ try{ return JSON.parse(localStorage.getItem(kgsPKey())||'[]'); }catch(e){ return []; } }
+function kgsPSave(a){ try{ localStorage.setItem(kgsPKey(), JSON.stringify(a)); }catch(e){} kgsPBanner(); }
+function kgsPPath(kind,id){ return BRANCH_PATH+(kind==='bill'?'bills/':'expenses/')+id; }
+function kgsPAdd(kind,obj){
+  const a=kgsPLoad().filter(x=>!(x.kind===kind && String(x.obj.id)===String(obj.id)));
+  a.push({kind:kind,obj:obj,t:Date.now()}); kgsPSave(a);
 }
-function fbSaveExpense(expense){
-  if(!fbDB) return;
-  fbDB.ref(BRANCH_PATH+'expenses/'+expense.id).set(expense).catch(e=>console.warn('fbSaveExp:',e));
+function kgsPRemove(kind,id){
+  const a=kgsPLoad(), b=a.filter(x=>!(x.kind===kind && String(x.obj.id)===String(id)));
+  if(b.length!==a.length) kgsPSave(b);
 }
+function kgsPBanner(){
+  try{
+    const n=kgsPLoad().length;
+    let el=document.getElementById('kgs-pending-banner');
+    if(!n){ if(el) el.style.display='none'; return; }
+    if(!document.body) return;
+    if(!el){
+      el=document.createElement('div'); el.id='kgs-pending-banner';
+      el.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99999;background:#C62828;color:#fff;padding:10px 14px;font:700 14px "Noto Sans Lao",sans-serif;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.35)';
+      document.body.appendChild(el);
+    }
+    el.style.display='block';
+    el.innerHTML='⚠️ ມີ <b>'+n+'</b> ລາຍການ (ບິນ/ລາຍຈ່າຍ) ຍັງບັນທຶກເຂົ້າ Firebase ບໍ່ສຳເລັດ — <u>ຢ່າປິດໜ້າເວັບ</u> ລະບົບກຳລັງລອງໃໝ່ &nbsp; <span onclick="kgsPFlush(true)" style="background:#fff;color:#C62828;border-radius:6px;padding:3px 10px;cursor:pointer">ລອງໃໝ່ດຽວນີ້</span>';
+  }catch(e){}
+}
+const _kgsPInflight={};
+function kgsPSend(kind,obj,manual){
+  const k=kind+':'+obj.id;
+  if(_kgsPInflight[k]) return;
+  if(!fbDB) return;
+  let clean;
+  try{ clean=JSON.parse(JSON.stringify(obj)); }catch(e){ clean=obj; }
+  _kgsPInflight[k]=1;
+  let p;
+  try{ p=fbDB.ref(kgsPPath(kind,obj.id)).set(clean); }
+  catch(e){ delete _kgsPInflight[k]; console.warn('kgsPSend:',e); if(manual) toast('❌ ບັນທຶກບໍ່ສຳເລັດ: '+(e.message||e),'error'); return; }
+  p.then(()=>{ delete _kgsPInflight[k]; kgsPRemove(kind,obj.id); })
+   .catch(e=>{ delete _kgsPInflight[k]; console.warn('kgsPSend:',e); if(manual) toast('❌ ຍັງບັນທຶກບໍ່ໄດ້ — ກວດອິນເຕີເນັດ','error'); });
+}
+function kgsPFlush(manual){
+  const a=kgsPLoad();
+  if(!a.length){ if(manual) toast('ບໍ່ມີລາຍການຄ້າງ'); return; }
+  if(!fbDB){ if(manual) toast('ຍັງບໍ່ເຊື່ອມ Firebase','error'); return; }
+  a.forEach(x=>kgsPSend(x.kind,x.obj,manual));
+}
+function kgsSafeWrite(kind,obj){
+  kgsMAdd('save',kind,obj);
+  kgsPAdd(kind,obj);               // ເກັບກ່ອນ — ຖ້າປິດໜ້າເວັບກາງທາງ ຈະສົ່ງຄືນຕອນເປີດໃໝ່
+  if(!fbDB){ toast('⚠️ ຍັງບໍ່ເຊື່ອມ Firebase — ເກັບໄວ້ລໍສົ່ງ','warning'); return; }
+  const k=kind+':'+obj.id;
+  let clean; try{ clean=JSON.parse(JSON.stringify(obj)); }catch(e){ clean=obj; }
+  _kgsPInflight[k]=1;
+  let p;
+  try{ p=fbDB.ref(kgsPPath(kind,obj.id)).set(clean); }
+  catch(e){ delete _kgsPInflight[k]; console.warn('kgsSafeWrite:',e); toast('❌ ບັນທຶກ'+(kind==='bill'?'ບິນ':'ລາຍຈ່າຍ')+'ບໍ່ສຳເລັດ: '+(e.message||e),'error'); return; }
+  p.then(()=>{ delete _kgsPInflight[k]; kgsPRemove(kind,obj.id); if(kind==='expense') toast('☁️ ບັນທຶກລາຍຈ່າຍເຂົ້າ Firebase ແລ້ວ'); })
+   .catch(e=>{ delete _kgsPInflight[k]; console.warn('kgsSafeWrite:',e); toast('❌ ບັນທຶກ'+(kind==='bill'?'ບິນ':'ລາຍຈ່າຍ')+'ເຂົ້າ Firebase ບໍ່ສຳເລັດ — ລະບົບຈະລອງໃໝ່. ຢ່າປິດໜ້າເວັບ','error'); });
+}
+setInterval(()=>{ try{ if(kgsPLoad().length) kgsPFlush(false); }catch(e){} }, 20000);
+window.addEventListener('online',()=>{ try{ kgsPFlush(false); }catch(e){} });
+setTimeout(()=>{ try{ kgsPBanner(); kgsPFlush(false); }catch(e){} }, 5000);
+function fbSaveBill(bill){ kgsSafeWrite('bill',bill); }
+function fbSaveExpense(expense){ kgsSafeWrite('expense',expense); }
+/* ===== GOOGLE SHEET MIRROR: ສຳເນົາບິນ/ລາຍຈ່າຍລົງ Google Sheet ຂອງບໍລິສັດ (ຢືນຢັນຜົນ + ຄິວລອງໃໝ່) ===== */
+let KGS_MIRROR = {url:'', token:''};
+try{ const _m=JSON.parse(localStorage.getItem('kgs_mirror_cfg_'+BRANCH_PATH)||'null'); if(_m && _m.url) KGS_MIRROR=_m; }catch(e){}
+function kgsMKey(){ return 'kgs_mirror_q_'+BRANCH_PATH; }
+function kgsMQLoad(){ try{ return JSON.parse(localStorage.getItem(kgsMKey())||'[]'); }catch(e){ return []; } }
+function kgsMQSave(a){ try{ localStorage.setItem(kgsMKey(), JSON.stringify(a)); }catch(e){} kgsMBadge(); }
+function kgsMAdd(op,kind,obj){
+  if(!KGS_MIRROR.url || !KGS_MIRROR.token) return;
+  let data=null; try{ data=JSON.parse(JSON.stringify(obj)); }catch(e){ data=obj; }
+  const id=String(obj.id);
+  const a=kgsMQLoad().filter(x=>!(x.kind===kind && String(x.id)===id));
+  a.push({op:op,kind:kind,id:id,data:data,t:Date.now()});
+  kgsMQSave(a);
+  kgsMFlushSoon();
+}
+let _kgsMTimer=null, _kgsMBusy=false;
+function kgsMFlushSoon(){ clearTimeout(_kgsMTimer); _kgsMTimer=setTimeout(()=>kgsMFlush(false),1500); }
+function kgsMFlush(manual){
+  if(!KGS_MIRROR.url || !KGS_MIRROR.token){ if(manual) toast('ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ Google Sheet','error'); return Promise.resolve(false); }
+  if(_kgsMBusy) return Promise.resolve(false);
+  const q=kgsMQLoad();
+  if(!q.length){ if(manual) toast('ບໍ່ມີລາຍການຄ້າງສົ່ງ'); return Promise.resolve(true); }
+  const batch=q.slice(0,40);
+  _kgsMBusy=true;
+  return fetch(KGS_MIRROR.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({token:KGS_MIRROR.token,branch:BRANCH_PATH.replace(/\/+$/,''),
+        items:batch.map(x=>({op:x.op,kind:x.kind,id:x.id,data:x.data}))})})
+    .then(r=>r.json())
+    .then(j=>{
+      _kgsMBusy=false;
+      if(j && j.ok){
+        const sent={}; batch.forEach(x=>{ sent[x.kind+':'+x.id]=x.t; });
+        const cur=kgsMQLoad().filter(x=>sent[x.kind+':'+x.id]!==x.t);
+        kgsMQSave(cur);
+        if(cur.length) setTimeout(()=>kgsMFlush(false),800);
+        if(manual) toast('✅ ສົ່ງເຂົ້າ Google Sheet ແລ້ວ '+batch.length+' ລາຍການ');
+        return true;
+      }
+      if(manual) toast('❌ Google Sheet ຕອບກັບ: '+((j && j.error)||'ຜິດພາດ'),'error');
+      return false;
+    })
+    .catch(e=>{ _kgsMBusy=false; console.warn('mirror:',e); if(manual) toast('❌ ເຊື່ອມ Google Sheet ບໍ່ໄດ້ — ກວດ URL ແລະການ Deploy','error'); return false; });
+}
+function kgsMBadge(){
+  try{
+    const q=kgsMQLoad(); let el=document.getElementById('kgs-mirror-badge');
+    const old=q.filter(x=>Date.now()-x.t>120000).length;
+    if(!old){ if(el) el.style.display='none'; return; }
+    if(!document.body) return;
+    if(!el){
+      el=document.createElement('div'); el.id='kgs-mirror-badge';
+      el.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99998;background:#F9A825;color:#222;padding:6px 12px;border-radius:8px;font:700 12px "Noto Sans Lao",sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer';
+      el.onclick=function(){ kgsMFlush(true); };
+      document.body.appendChild(el);
+    }
+    el.style.display='block';
+    el.textContent='📄 Google Sheet: ຄ້າງສົ່ງ '+old+' ລາຍການ (ກົດລອງໃໝ່)';
+  }catch(e){}
+}
+function kgsMRenderCfg(){
+  const u=document.getElementById('mirror-url'), t=document.getElementById('mirror-token'), st=document.getElementById('mirror-status');
+  if(u && document.activeElement!==u && u.value!==(KGS_MIRROR.url||'')) u.value=KGS_MIRROR.url||'';
+  if(t && document.activeElement!==t && t.value!==(KGS_MIRROR.token||'')) t.value=KGS_MIRROR.token||'';
+  if(st) st.textContent=KGS_MIRROR.url?('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+kgsMQLoad().length+' ລາຍການ'):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ';
+}
+function kgsMSaveCfg(){
+  const url=(document.getElementById('mirror-url').value||'').trim();
+  const token=(document.getElementById('mirror-token').value||'').trim();
+  if(url && !/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(url)){ toast('URL ຕ້ອງເປັນລິ້ງ Web app ທີ່ລົງທ້າຍດ້ວຍ /exec','error'); return; }
+  KGS_MIRROR={url:url,token:token};
+  try{ localStorage.setItem('kgs_mirror_cfg_'+BRANCH_PATH, JSON.stringify(KGS_MIRROR)); }catch(e){}
+  if(fbDB) fbDB.ref(BRANCH_PATH+'sheetMirror').set(KGS_MIRROR).catch(e=>{});
+  toast('✅ ບັນທຶກການຕັ້ງຄ່າ Google Sheet'); kgsMRenderCfg();
+}
+function kgsMTest(){
+  if(!KGS_MIRROR.url){ toast('ໃສ່ URL ແລ້ວກົດ ບັນທຶກ ກ່ອນ','error'); return; }
+  fetch(KGS_MIRROR.url+'?token='+encodeURIComponent(KGS_MIRROR.token||''))
+    .then(r=>r.json())
+    .then(j=>{
+      if(j && j.ok && j.auth) toast('✅ ເຊື່ອມ Google Sheet ສຳເລັດ ແລະ Token ຖືກຕ້ອງ');
+      else if(j && j.ok) toast('⚠️ ເຊື່ອມໄດ້ ແຕ່ Token ບໍ່ຕົງກັບໃນ Apps Script','error');
+      else toast('❌ ຕອບກັບບໍ່ຖືກຕ້ອງ','error');
+    })
+    .catch(()=>toast('❌ ເຊື່ອມບໍ່ໄດ້ — ກວດ URL ແລະວ່າ Deploy ເປັນ "Anyone"','error'));
+}
+function kgsMBackfill(){
+  if(!KGS_MIRROR.url || !KGS_MIRROR.token){ toast('ຕັ້ງຄ່າ URL ແລະ Token ກ່ອນ','error'); return; }
+  if(!confirm('ສົ່ງບິນ '+BILLS.length+' ໃບ ແລະລາຍຈ່າຍ '+EXPENSES.length+' ລາຍການທີ່ມີໃນແອັບເຂົ້າ Google Sheet?\n(ສົ່ງຊ້ຳໄດ້ ບໍ່ເຮັດໃຫ້ຊ້ຳແຖວ)')) return;
+  const q=kgsMQLoad(), have={}; q.forEach(x=>{ have[x.kind+':'+x.id]=1; });
+  const t=Date.now();
+  BILLS.forEach(b=>{ if(b && b.id && !have['bill:'+b.id]) q.push({op:'save',kind:'bill',id:String(b.id),data:JSON.parse(JSON.stringify(b)),t:t}); });
+  EXPENSES.forEach(x=>{ if(x && x.id!==undefined && !have['expense:'+x.id]) q.push({op:'save',kind:'expense',id:String(x.id),data:JSON.parse(JSON.stringify(x)),t:t}); });
+  kgsMQSave(q); kgsMFlush(true);
+}
+setInterval(()=>{ try{ if(kgsMQLoad().length) kgsMFlush(false); kgsMBadge(); kgsMRenderCfg(); }catch(e){} }, 30000);
+setInterval(()=>{ try{ kgsMRenderCfg(); }catch(e){} }, 2500);
+window.addEventListener('online',()=>{ try{ kgsMFlush(false); }catch(e){} });
+(function(){ let tries=0; const iv=setInterval(()=>{
+  if(typeof fbDB!=='undefined' && fbDB){
+    clearInterval(iv);
+    try{ fbDB.ref(BRANCH_PATH+'sheetMirror').on('value',snap=>{
+      const v=snap.val();
+      if(v && v.url){ KGS_MIRROR={url:v.url,token:v.token||''}; try{ localStorage.setItem('kgs_mirror_cfg_'+BRANCH_PATH, JSON.stringify(KGS_MIRROR)); }catch(e){} kgsMRenderCfg(); }
+    }); }catch(e){}
+  } else if(++tries>60) clearInterval(iv);
+},2000); })();
+
 function fbSaveConsignPayout(payout){
   if(!fbDB) return;
   fbDB.ref(BRANCH_PATH+'consignPayouts/'+payout.id).set(payout).catch(e=>console.warn('fbSaveConsignPayout:',e));
@@ -11691,6 +11881,7 @@ function fbListenBills(){
       if(m) return m[1] >= _cutoffStr;
       return true; // keep legacy B-001 format bills
     });
+    try{ kgsPLoad().filter(x=>x.kind==='bill').forEach(x=>{ if(!billArr.some(b=>b.id===x.obj.id)) billArr.push(x.obj); }); }catch(_e){}
     billArr.sort((a,b)=>b.id?.localeCompare(a.id||'')||0);
     const newSig = JSON.stringify(billArr);
     const curSig = JSON.stringify(BILLS);
@@ -12093,6 +12284,7 @@ function fbListenExpenses(){
     const curSig = JSON.stringify(EXPENSES);
     if(newSig === curSig) return;
     EXPENSES.length=0; arr.forEach(e=>EXPENSES.push(e));
+    try{ kgsPLoad().filter(x=>x.kind==='expense').forEach(x=>{ if(!EXPENSES.some(e=>String(e.id)===String(x.obj.id))) EXPENSES.push(x.obj); }); }catch(_e){}
     if(S.user && typeof renderExpenseView==='function') renderExpenseView();
     if(S.user && typeof renderReportsView==='function' && document.getElementById('reports-view')) renderReportsView();
   });
