@@ -11726,6 +11726,7 @@ function kgsMSaveCfg(){
   try{ localStorage.setItem('kgs_mirror_cfg_'+BRANCH_PATH, JSON.stringify(KGS_MIRROR)); }catch(e){}
   if(fbDB) fbDB.ref(BRANCH_PATH+'sheetMirror').set(KGS_MIRROR).catch(e=>{});
   try{ delete document.getElementById('mirror-url').dataset.d; delete document.getElementById('mirror-token').dataset.d; }catch(e){}
+  setTimeout(()=>{ try{ kgsMSnap(true); }catch(e){} },500);
   toast('✅ ບັນທຶກການຕັ້ງຄ່າ Google Sheet'); kgsMRenderCfg();
 }
 function kgsMTest(){
@@ -11746,9 +11747,36 @@ function kgsMBackfill(){
   const t=Date.now();
   BILLS.forEach(b=>{ if(b && b.id && !have['bill:'+b.id]) q.push({op:'save',kind:'bill',id:String(b.id),data:JSON.parse(JSON.stringify(b)),t:t}); });
   EXPENSES.forEach(x=>{ if(x && x.id!==undefined && !have['expense:'+x.id]) q.push({op:'save',kind:'expense',id:String(x.id),data:JSON.parse(JSON.stringify(x)),t:t}); });
-  window._kgsMTotal=q.length; kgsMQSave(q); toast('⏳ ກຳລັງສົ່ງ '+q.length+' ລາຍການ ໂດຍອັດຕະໂນມັດ — ປ່ອຍໜ້ານີ້ເປີດໄວ້'); kgsMFlush(false);
+  try{ kgsMSnap(true); }catch(e){} window._kgsMTotal=q.length; kgsMQSave(q); toast('⏳ ກຳລັງສົ່ງ '+q.length+' ລາຍການ ໂດຍອັດຕະໂນມັດ — ປ່ອຍໜ້ານີ້ເປີດໄວ້'); kgsMFlush(false);
 }
-setInterval(()=>{ try{ if(kgsMQLoad().length) kgsMFlush(false); kgsMBadge(); kgsMRenderCfg(); }catch(e){} }, 30000);
+
+function kgsMSnapData(){
+  const P=(a,keys)=>(a||[]).map(o=>{ const r={}; keys.forEach(k=>{ r[k]=o[k]; }); return r; });
+  return {
+    consign:P(CONSIGN_PAYOUTS,['id','date','supplier','amount','by','note']),
+    menu:P(MENU,['id','name','cat','price','avail','consign','consignCost','consignSupplier','trackStock','stockType','stockItemId','redeemPts','sold']),
+    categories:P(CATEGORIES,['id','name','color']),
+    stock:P(STOCK_ITEMS,['id','name','type','unit','qty','minQty','price','cupType']),
+    moves:P(STOCK_MOVEMENTS,['id','date','stockItemId','type','qty','by','note'])
+  };
+}
+function kgsMHash(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return s.length+':'+h; }
+let _kgsMSnapBusy=false;
+function kgsMSnap(force){
+  if(!KGS_MIRROR.url || !KGS_MIRROR.token || _kgsMSnapBusy) return Promise.resolve(false);
+  let data, body; try{ data=kgsMSnapData(); }catch(e){ return Promise.resolve(false); }
+  if(!data.menu.length && !data.stock.length && !data.consign.length) return Promise.resolve(false);
+  try{ body=JSON.stringify({token:KGS_MIRROR.token,branch:BRANCH_PATH.replace(/\/+$/,''),snapshot:data}); }catch(e){ return Promise.resolve(false); }
+  const hk='kgs_msnap_'+BRANCH_PATH, h=kgsMHash(body);
+  try{ if(!force && localStorage.getItem(hk)===h) return Promise.resolve(true); }catch(e){}
+  _kgsMSnapBusy=true;
+  return fetch(KGS_MIRROR.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:body})
+    .then(r=>r.json())
+    .then(j=>{ _kgsMSnapBusy=false; if(j&&j.ok){ try{ localStorage.setItem(hk,h); }catch(e){} return true; } window._kgsMErr='Sheet (ເມນູ/ສາງ): '+((j&&j.error)||'ຜິດພາດ'); return false; })
+    .catch(e=>{ _kgsMSnapBusy=false; return false; });
+}
+setTimeout(()=>{ try{ kgsMSnap(false); }catch(e){} }, 20000);
+setInterval(()=>{ try{ if(kgsMQLoad().length) kgsMFlush(false); kgsMSnap(false); kgsMBadge(); kgsMRenderCfg(); }catch(e){} }, 30000);
 setInterval(()=>{ try{ kgsMRenderCfg(); }catch(e){} }, 2500);
 window.addEventListener('online',()=>{ try{ kgsMFlush(false); }catch(e){} });
 (function(){ let tries=0; const iv=setInterval(()=>{
