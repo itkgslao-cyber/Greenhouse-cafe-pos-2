@@ -11711,8 +11711,9 @@ function kgsMBadge(){
 }
 function kgsMRenderCfg(){
   const u=document.getElementById('mirror-url'), t=document.getElementById('mirror-token'), st=document.getElementById('mirror-status');
-  if(u && document.activeElement!==u && u.value!==(KGS_MIRROR.url||'')) u.value=KGS_MIRROR.url||'';
-  if(t && document.activeElement!==t && t.value!==(KGS_MIRROR.token||'')) t.value=KGS_MIRROR.token||'';
+  [u,t].forEach(function(el){ if(el && !el._kd){ el._kd=1; el.addEventListener('input',function(){ el.dataset.d='1'; }); } });
+  if(u && !u.dataset.d && document.activeElement!==u && u.value!==(KGS_MIRROR.url||'')) u.value=KGS_MIRROR.url||'';
+  if(t && !t.dataset.d && document.activeElement!==t && t.value!==(KGS_MIRROR.token||'')) t.value=KGS_MIRROR.token||'';
   if(st) st.textContent=KGS_MIRROR.url?('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+kgsMQLoad().length+' ລາຍການ'):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ';
 }
 function kgsMSaveCfg(){
@@ -11722,6 +11723,7 @@ function kgsMSaveCfg(){
   KGS_MIRROR={url:url,token:token};
   try{ localStorage.setItem('kgs_mirror_cfg_'+BRANCH_PATH, JSON.stringify(KGS_MIRROR)); }catch(e){}
   if(fbDB) fbDB.ref(BRANCH_PATH+'sheetMirror').set(KGS_MIRROR).catch(e=>{});
+  try{ delete document.getElementById('mirror-url').dataset.d; delete document.getElementById('mirror-token').dataset.d; }catch(e){}
   toast('✅ ບັນທຶກການຕັ້ງຄ່າ Google Sheet'); kgsMRenderCfg();
 }
 function kgsMTest(){
