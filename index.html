@@ -11682,6 +11682,7 @@ function kgsMFlush(manual){
       _kgsMBusy=false;
       if(j && j.ok){
         const sent={}; batch.forEach(x=>{ sent[x.kind+':'+x.id]=x.t; });
+        window._kgsMErr='';
         const cur=kgsMQLoad().filter(x=>sent[x.kind+':'+x.id]!==x.t);
         kgsMQSave(cur);
         if(cur.length) setTimeout(()=>kgsMFlush(false),300);
@@ -11689,10 +11690,10 @@ function kgsMFlush(manual){
         if(manual) toast('✅ ສົ່ງເຂົ້າ Google Sheet ແລ້ວ '+batch.length+' ລາຍການ');
         return true;
       }
-      if(manual) toast('❌ Google Sheet ຕອບກັບ: '+((j && j.error)||'ຜິດພາດ'),'error');
+      window._kgsMErr='Google Sheet ຕອບ: '+((j && j.error)||'ຜິດພາດ'); if(manual) toast('❌ '+window._kgsMErr,'error');
       return false;
     })
-    .catch(e=>{ _kgsMBusy=false; console.warn('mirror:',e); if(manual) toast('❌ ເຊື່ອມ Google Sheet ບໍ່ໄດ້ — ກວດ URL ແລະການ Deploy','error'); return false; });
+    .catch(e=>{ _kgsMBusy=false; console.warn('mirror:',e); window._kgsMErr='ເຊື່ອມບໍ່ໄດ້: '+(e&&e.message||e); if(manual) toast('❌ ເຊື່ອມ Google Sheet ບໍ່ໄດ້ — ກວດ URL ແລະການ Deploy','error'); return false; });
 }
 function kgsMBadge(){
   try{
@@ -11715,7 +11716,7 @@ function kgsMRenderCfg(){
   [u,t].forEach(function(el){ if(el && !el._kd){ el._kd=1; el.addEventListener('input',function(){ el.dataset.d='1'; }); } });
   if(u && !u.dataset.d && document.activeElement!==u && u.value!==(KGS_MIRROR.url||'')) u.value=KGS_MIRROR.url||'';
   if(t && !t.dataset.d && document.activeElement!==t && t.value!==(KGS_MIRROR.token||'')) t.value=KGS_MIRROR.token||'';
-  if(st){ const n=kgsMQLoad().length; st.textContent=KGS_MIRROR.url?((window._kgsMTotal&&n)?('⏳ ກຳລັງສົ່ງ... ສົ່ງແລ້ວ '+(window._kgsMTotal-n)+' / '+window._kgsMTotal+' ລາຍການ'):('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+n+' ລາຍການ')):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ'; }
+  if(st){ const n=kgsMQLoad().length; if(window._kgsMErr&&n){ st.textContent='⚠️ ສົ່ງບໍ່ໄດ້ ('+window._kgsMErr+') · ຄ້າງ '+n+' ລາຍການ — ຈະລອງໃໝ່ເອງ'; } else st.textContent=KGS_MIRROR.url?((window._kgsMTotal&&n)?('⏳ ກຳລັງສົ່ງ... ສົ່ງແລ້ວ '+(window._kgsMTotal-n)+' / '+window._kgsMTotal+' ລາຍການ'):('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+n+' ລາຍການ')):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ'; }
 }
 function kgsMSaveCfg(){
   const url=(document.getElementById('mirror-url').value||'').trim();
