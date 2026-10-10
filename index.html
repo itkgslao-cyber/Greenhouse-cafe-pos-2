@@ -11716,7 +11716,7 @@ function kgsMRenderCfg(){
   [u,t].forEach(function(el){ if(el && !el._kd){ el._kd=1; el.addEventListener('input',function(){ el.dataset.d='1'; }); } });
   if(u && !u.dataset.d && document.activeElement!==u && u.value!==(KGS_MIRROR.url||'')) u.value=KGS_MIRROR.url||'';
   if(t && !t.dataset.d && document.activeElement!==t && t.value!==(KGS_MIRROR.token||'')) t.value=KGS_MIRROR.token||'';
-  if(st){ const n=kgsMQLoad().length; if(window._kgsMErr&&n){ st.textContent='⚠️ ສົ່ງບໍ່ໄດ້ ('+window._kgsMErr+') · ຄ້າງ '+n+' ລາຍການ — ຈະລອງໃໝ່ເອງ'; } else st.textContent=KGS_MIRROR.url?((window._kgsMTotal&&n)?('⏳ ກຳລັງສົ່ງ... ສົ່ງແລ້ວ '+(window._kgsMTotal-n)+' / '+window._kgsMTotal+' ລາຍການ'):('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+n+' ລາຍການ')):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ'; }
+  if(st){ const n=kgsMQLoad().length; if(window._kgsMErr&&n){ st.textContent='⚠️ ສົ່ງບໍ່ໄດ້ ('+window._kgsMErr+') · ຄ້າງ '+n+' ລາຍການ — ຈະລອງໃໝ່ເອງ'; } else st.textContent=KGS_MIRROR.url?((window._kgsMTotal&&n)?('⏳ ກຳລັງສົ່ງ... ສົ່ງແລ້ວ '+(window._kgsMTotal-n)+' / '+window._kgsMTotal+' ລາຍການ'):('ເປີດໃຊ້ແລ້ວ · ຄ້າງສົ່ງ '+n+' ລາຍການ')):'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ'; if(KGS_MIRROR.url && window._kgsMSnapSt) st.textContent+=' | '+window._kgsMSnapSt; }
 }
 function kgsMSaveCfg(){
   const url=(document.getElementById('mirror-url').value||'').trim();
@@ -11772,8 +11772,10 @@ function kgsMSnap(force){
   _kgsMSnapBusy=true;
   return fetch(KGS_MIRROR.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:body})
     .then(r=>r.json())
-    .then(j=>{ _kgsMSnapBusy=false; if(j&&j.ok){ try{ localStorage.setItem(hk,h); }catch(e){} return true; } window._kgsMErr='Sheet (ເມນູ/ສາງ): '+((j&&j.error)||'ຜິດພາດ'); return false; })
-    .catch(e=>{ _kgsMSnapBusy=false; return false; });
+    .then(j=>{ _kgsMSnapBusy=false;
+      if(j&&j.ok&&j.snap){ try{ localStorage.setItem(hk,h); }catch(e){} window._kgsMSnapSt='✅ ແຖບເມນູ/ສາງ ສົ່ງແລ້ວ '+new Date().toLocaleTimeString(); return true; }
+      window._kgsMSnapSt=(j&&j.ok)?'❌ ແຖບເມນູ/ສາງ: Apps Script ຍັງເປັນເວີຊັນເກົ່າ — ໄປ Deploy → Manage deployments → ✏️ → New version → Deploy':'❌ ແຖບເມນູ/ສາງ: '+((j&&j.error)||'ຜິດພາດ'); return false; })
+    .catch(e=>{ _kgsMSnapBusy=false; window._kgsMSnapSt='❌ ແຖບເມນູ/ສາງ ສົ່ງບໍ່ໄດ້: '+(e&&e.message||e); return false; });
 }
 setTimeout(()=>{ try{ kgsMSnap(false); }catch(e){} }, 20000);
 setInterval(()=>{ try{ if(kgsMQLoad().length) kgsMFlush(false); kgsMSnap(false); kgsMBadge(); kgsMRenderCfg(); }catch(e){} }, 30000);
