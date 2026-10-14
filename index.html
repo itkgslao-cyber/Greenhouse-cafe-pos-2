@@ -1980,6 +1980,7 @@ body{font-family:'Noto Sans Lao','IBM Plex Sans Thai',sans-serif;background:var(
                   <button class="btn btn-primary" onclick="kgsMSaveCfg()">💾 ບັນທຶກ</button>
                   <button class="btn" style="border:1.5px solid var(--bdr)" onclick="kgsMTest()">🔌 ທົດສອບເຊື່ອມ</button>
                   <button class="btn" style="border:1.5px solid var(--bdr)" onclick="kgsMBackfill()">📤 ສົ່ງຂໍ້ມູນທີ່ມີທັງໝົດ</button>
+                  <button class="btn" style="border:1.5px solid #E67E22;color:#B9770E" onclick="kgsRestoreFromSheet()">📥 ກູ້ຄືນຈາກ Google Sheet</button>
                 </div>
                 <div id="mirror-status" style="margin-top:10px;font-size:12px;color:var(--t2)"></div>
               </div>
@@ -11750,6 +11751,33 @@ function kgsMBackfill(){
   try{ kgsMSnap(true); }catch(e){} window._kgsMTotal=q.length; kgsMQSave(q); toast('⏳ ກຳລັງສົ່ງ '+q.length+' ລາຍການ ໂດຍອັດຕະໂນມັດ — ປ່ອຍໜ້ານີ້ເປີດໄວ້'); kgsMFlush(false);
 }
 
+function kgsFC(o){
+  let c; try{ c=JSON.parse(JSON.stringify(o)); }catch(e){ return o; }
+  if(c && typeof c==='object' && !Array.isArray(c)){
+    const st=[];
+    Object.keys(c).forEach(k=>{ const v=c[k];
+      try{ if((typeof v==='string' && v.length>20000) || (v && typeof v==='object' && JSON.stringify(v).length>20000)){ delete c[k]; st.push(k); } }catch(e){}
+    });
+    if(st.length) c._stripped=st;
+  }
+  return c;
+}
+function kgsFullData(){
+  const L=a=>(a||[]).map(kgsFC);
+  const bq={}; try{ Object.keys(BANK_QR||{}).forEach(k=>{ const b=BANK_QR[k]||{}; bq[k]={name:b.name,icon:b.icon,color:b.color}; }); }catch(e){}
+  const vatEl=document.getElementById('sys-vat-pct');
+  const store={id:'store',name:STORE_INFO.name,phone:STORE_INFO.phone,addr:STORE_INFO.addr,open:STORE_INFO.open,close:STORE_INFO.close,msg:STORE_INFO.msg,vat:vatEl?(parseFloat(vatEl.value)||0):0,bankQR:bq};
+  return {
+    menu:L(MENU), categories:L(CATEGORIES), stockItems:L(STOCK_ITEMS), stockMovements:L(STOCK_MOVEMENTS),
+    consignPayouts:L(CONSIGN_PAYOUTS), customers:L(CUSTOMERS), promotions:L(PROMOTIONS),
+    rolesData:L(ROLES_DATA),
+    promoPerms:[Object.assign({id:'promoPerms'},kgsFC(PROMO_PERMS))],
+    loyaltyConfig:[Object.assign({id:'loyalty'},kgsFC(LOYALTY_CONFIG))],
+    store:[store],
+    tables:(TABLES||[]).map(t=>({id:t.id,name:t.name,seats:t.seats})),
+    meta:[{id:'meta',billIdCounter:S.billIdCounter,custIdCounter:custIdCounter,stockItemIdCtr:stockItemIdCtr,stockMoveIdCtr:stockMoveIdCtr,consignPayoutIdCtr:consignPayoutIdCtr,expIdCtr:expIdCtr}]
+  };
+}
 function kgsMSnapData(){
   const P=(a,keys)=>(a||[]).map(o=>{ const r={}; keys.forEach(k=>{ r[k]=o[k]; }); return r; });
   return {
@@ -11757,7 +11785,8 @@ function kgsMSnapData(){
     menu:P(MENU,['id','name','cat','price','avail','consign','consignCost','consignSupplier','trackStock','stockType','stockItemId','redeemPts','sold']),
     categories:P(CATEGORIES,['id','name','color']),
     stock:P(STOCK_ITEMS,['id','name','type','unit','qty','minQty','price','cupType']),
-    moves:P(STOCK_MOVEMENTS,['id','date','stockItemId','type','qty','by','note'])
+    moves:P(STOCK_MOVEMENTS,['id','date','stockItemId','type','qty','by','note']),
+    full:kgsFullData()
   };
 }
 function kgsMHash(s){ let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return s.length+':'+h; }
@@ -11776,6 +11805,76 @@ function kgsMSnap(force){
       if(j&&j.ok&&j.snap){ try{ localStorage.setItem(hk,h); }catch(e){} window._kgsMSnapSt='✅ ແຖບເມນູ/ສາງ ສົ່ງແລ້ວ '+new Date().toLocaleTimeString(); return true; }
       window._kgsMSnapSt=(j&&j.ok)?'❌ ແຖບເມນູ/ສາງ: Apps Script ຍັງເປັນເວີຊັນເກົ່າ — ໄປ Deploy → Manage deployments → ✏️ → New version → Deploy':'❌ ແຖບເມນູ/ສາງ: '+((j&&j.error)||'ຜິດພາດ'); return false; })
     .catch(e=>{ _kgsMSnapBusy=false; window._kgsMSnapSt='❌ ແຖບເມນູ/ສາງ ສົ່ງບໍ່ໄດ້: '+(e&&e.message||e); return false; });
+}
+/* ===== ກູ້ຄືນຂໍ້ມູນຈາກ Google Sheet (Restore) — ເພີ່ມສະເພາະສິ່ງທີ່ຂາດ, ບໍ່ຂຽນທັບຂອງທີ່ມີ ===== */
+let _kgsRestoreBusy=false;
+function kgsMPost(extra){
+  return fetch(KGS_MIRROR.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(Object.assign({token:KGS_MIRROR.token,branch:BRANCH_PATH.replace(/\/+$/,'')},extra))}).then(r=>r.json());
+}
+async function kgsFetchPart(part,stat){
+  if(part==='full'){ const j=await kgsMPost({export:true,part:'full'}); if(!j||!j.ok) throw new Error((j&&j.error)||'ດຶງຂໍ້ມູນບໍ່ສຳເລັດ'); return j.full||{}; }
+  let items=[], from=0;
+  for(let guard=0; guard<200; guard++){
+    const j=await kgsMPost({export:true,part:part,from:from,limit:1500});
+    if(!j||!j.ok) throw new Error((j&&j.error)||'ດຶງຂໍ້ມູນບໍ່ສຳເລັດ');
+    items=items.concat(j.items||[]); stat.skipped+=(j.skipped||0);
+    if(j.next==null) break; from=j.next;
+  }
+  return items;
+}
+async function kgsRestoreFromSheet(){
+  if(S.user?.role!=='admin'){ toast('ກູ້ຄືນໄດ້ສະເພາະ Admin ເທົ່ານັ້ນ','error'); return; }
+  if(!KGS_MIRROR.url || !KGS_MIRROR.token){ toast('ຕັ້ງຄ່າ URL ແລະ Token ຂອງ Google Sheet ກ່ອນ','error'); return; }
+  if(_kgsRestoreBusy) return; _kgsRestoreBusy=true;
+  const stat={skipped:0};
+  try{
+    toast('⏳ ກຳລັງດຶງຂໍ້ມູນຈາກ Google Sheet... ປ່ອຍໜ້ານີ້ເປີດໄວ້');
+    const bills=await kgsFetchPart('bills',stat), exps=await kgsFetchPart('expenses',stat), full=await kgsFetchPart('full',stat);
+    const idSet=a=>{ const s=new Set(); (a||[]).forEach(x=>{ if(x&&x.id!=null) s.add(String(x.id)); }); return s; };
+    const miss=(have,src)=>{ const h=idSet(have); return (src||[]).filter(o=>o&&o.id!=null&&!h.has(String(o.id))); };
+    const nb=miss(BILLS,bills), ne=miss(EXPENSES,exps);
+    const nm=miss(MENU,full.menu), nc=miss(CATEGORIES,full.categories), ns=miss(STOCK_ITEMS,full.stockItems),
+          nv=miss(STOCK_MOVEMENTS,full.stockMovements), np=miss(CONSIGN_PAYOUTS,full.consignPayouts),
+          ncu=miss(CUSTOMERS,full.customers), npr=miss(PROMOTIONS,full.promotions);
+    const total=nb.length+ne.length+nm.length+nc.length+ns.length+nv.length+np.length+ncu.length+npr.length;
+    const msg='ຂໍ້ມູນໃນ Google Sheet ທີ່ ຂາດໃນແອັບ ຕອນນີ້:\n'
+      +'• ບິນ '+nb.length+' (ໃນ Sheet ທັງໝົດ '+bills.length+')\n• ລາຍຈ່າຍ '+ne.length+' (ໃນ Sheet '+exps.length+')\n'
+      +'• ເມນູ '+nm.length+' • ໝວດ '+nc.length+' • ສາງ '+ns.length+' • ການເຄື່ອນໄຫວສາງ '+nv.length+'\n'
+      +'• ຈ່າຍຝາກຂາຍ '+np.length+' • ລູກຄ້າ '+ncu.length+' • ໂປຣໂມຊັ່ນ '+npr.length+'\n'
+      +(stat.skipped?('⚠️ ອ່ານບໍ່ໄດ້ '+stat.skipped+' ແຖວ (ຂໍ້ມູນເກີນຂະໜາດເຊວ)\n'):'')
+      +'\nຈະ "ເພີ່ມ" ສະເພາະທີ່ຂາດ ບໍ່ຂຽນທັບຂອງທີ່ມີຢູ່. ຮູບເມນູ/ໂລໂກ້ ບໍ່ມີໃນ Sheet ຕ້ອງອັບໂຫຼດໃໝ່.\nດຳເນີນການ?';
+    if(!total){ toast('✅ ຂໍ້ມູນໃນແອັບຄົບແລ້ວ ບໍ່ມີຫຍັງຂາດ'); return; }
+    if(!confirm(msg)) return;
+    const batch='imp_'+Date.now();
+    nb.forEach(b=>{ b.importBatch=batch; BILLS.push(b); if(fbDB) fbSaveBill(b); });
+    ne.forEach(x=>{ x.importBatch=batch; EXPENSES.push(x); if(fbDB) fbSaveExpense(x); });
+    nm.forEach(o=>MENU.push(o)); if(nm.length) fbSaveMenu();
+    nc.forEach(o=>CATEGORIES.push(o)); if(nc.length) fbSaveCategories();
+    ns.forEach(o=>{ STOCK_ITEMS.push(o); fbSaveStockItem(o); });
+    nv.forEach(o=>{ STOCK_MOVEMENTS.push(o); fbSaveStockMovement(o); });
+    np.forEach(o=>{ CONSIGN_PAYOUTS.push(o); fbSaveConsignPayout(o); });
+    ncu.forEach(o=>CUSTOMERS.push(o)); if(ncu.length) fbSaveCustomers();
+    npr.forEach(o=>PROMOTIONS.push(o)); if(npr.length) fbSavePromotions();
+    // ປັບຕົວນັບ (counter) ບໍ່ໃຫ້ຊ້ຳກັບຂອງທີ່ກູ້ຄືນ
+    const mx=(a)=>a.reduce((m,o)=>{ const n=Number(o.id); return (isFinite(n)&&n<1e11&&n>m)?n:m; },0);
+    try{
+      const meta=(full.meta&&full.meta[0])||{};
+      stockItemIdCtr=Math.max(stockItemIdCtr||1, mx(STOCK_ITEMS)+1, Number(meta.stockItemIdCtr)||0);
+      stockMoveIdCtr=Math.max(stockMoveIdCtr||1, mx(STOCK_MOVEMENTS)+1, Number(meta.stockMoveIdCtr)||0);
+      custIdCounter=Math.max(custIdCounter||1, mx(CUSTOMERS)+1, Number(meta.custIdCounter)||0);
+      if(fbDB){
+        fbDB.ref(BRANCH_PATH+'meta/stockItemIdCtr').set(stockItemIdCtr).catch(e=>{});
+        fbDB.ref(BRANCH_PATH+'meta/stockMoveIdCtr').set(stockMoveIdCtr).catch(e=>{});
+        fbDB.ref(BRANCH_PATH+'meta/custIdCounter').set(custIdCounter).catch(e=>{});
+      }
+    }catch(e){ console.warn('restore counters:',e); }
+    toast('✅ ກູ້ຄືນແລ້ວ '+total+' ລາຍການ — ໂຫຼດໜ້າໃໝ່ (Ctrl+F5) ເພື່ອກວດ','success');
+    try{ if(typeof renderExpenseView==='function') renderExpenseView(); if(typeof renderDash==='function') renderDash(); if(typeof renderImportBatches==='function') renderImportBatches(); }catch(e){}
+  }catch(e){
+    console.warn('restore:',e);
+    toast('❌ ກູ້ຄືນບໍ່ສຳເລັດ: '+(e&&e.message||e)+' (ຖ້າຂຶ້ນ bad-part/ບໍ່ຮູ້ຈັກ ໃຫ້ Deploy Apps Script ເວີຊັນໃໝ່)','error');
+  }finally{ _kgsRestoreBusy=false; }
 }
 setTimeout(()=>{ try{ kgsMSnap(false); }catch(e){} }, 20000);
 setInterval(()=>{ try{ if(kgsMQLoad().length) kgsMFlush(false); kgsMSnap(false); kgsMBadge(); kgsMRenderCfg(); }catch(e){} }, 30000);
